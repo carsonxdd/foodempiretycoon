@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Empire Tycoon</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="arcade-border hero-header">
+                <h1 class="hero-title">Food Empire Tycoon</h1>
+                <p class="tagline">From a beat up truck to a million-dollar business</p>
+            </div>
+        </header>
+
+        <!-- Rolling quote ticker — filled by main.js from GameData.positiveFeedback -->
+        <div class="quote-ticker" aria-hidden="true">
+            <div class="quote-track" id="quoteTrack">
+                <!-- Populated on DOMContentLoaded -->
+            </div>
+        </div>
+
+        <main>
+            <!-- Ambient floating food backdrop — only visible on the landing -->
+            <div class="food-backdrop" aria-hidden="true">
+                <span class="float" style="left: 5%;  animation-duration: 24s; animation-delay:  0s;">🍔</span>
+                <span class="float" style="left: 15%; animation-duration: 30s; animation-delay:  4s;">🌮</span>
+                <span class="float" style="left: 25%; animation-duration: 22s; animation-delay: 10s;">🍕</span>
+                <span class="float" style="left: 38%; animation-duration: 28s; animation-delay:  2s;">🥪</span>
+                <span class="float" style="left: 50%; animation-duration: 34s; animation-delay: 15s;">🥤</span>
+                <span class="float" style="left: 62%; animation-duration: 26s; animation-delay:  8s;">🍟</span>
+                <span class="float" style="left: 72%; animation-duration: 32s; animation-delay: 12s;">🧀</span>
+                <span class="float" style="left: 82%; animation-duration: 20s; animation-delay:  6s;">🥓</span>
+                <span class="float" style="left: 92%; animation-duration: 28s; animation-delay: 18s;">🥬</span>
+                <span class="float" style="left: 8%;  animation-duration: 36s; animation-delay: 20s;">🍅</span>
+                <span class="float" style="left: 45%; animation-duration: 25s; animation-delay: 14s;">🌶️</span>
+                <span class="float" style="left: 68%; animation-duration: 29s; animation-delay:  5s;">🥒</span>
+            </div>
+
+            <section class="story-intro arcade-border">
+                <h2>The Grind</h2>
+                <p>Your food. Your grind. Your rules. Scrub the pans, fight the weather, learn your regulars. Every sale has a cost, every complaint has a fix, and the rent shows up whether you sold a single burger or not. Turn a rented food truck into a million-dollar business — one day at a time.</p>
+            </section>
+
+            <section class="game-objectives arcade-border">
+                <h2>What you're in for</h2>
+                <ul>
+                    <li>Start with <strong>$5,000</strong> and a beat-up food truck</li>
+                    <li>Real overhead — rent, vehicle lease, license, permits, insurance</li>
+                    <li>Opening week is brutal: 1–6 walk-ups a day regardless of bonuses</li>
+                    <li>Build <strong>regulars</strong> past day 7 to stabilize the business</li>
+                    <li>Unlock a real restaurant at <strong>$40k</strong>, a chain at <strong>$120k</strong></li>
+                    <li>Hit <strong>$1,000,000</strong> and you've made it</li>
+                    <li>Hard mode drops you at $3k with shifting market prices and no fix hints</li>
+                </ul>
+            </section>
+
+            <section class="features arcade-border">
+                <h2>What you'll do</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>🥪 Build your recipe</h3>
+                        <p>Bun, beef, cheese — or load it up with bacon and sauce. Some diners want simple, others want gourmet. You can't please everyone.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>👥 Read the customers</h3>
+                        <p>Named regulars leave real feedback. Fix what they complain about or watch your reputation slip.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📊 Run the numbers</h3>
+                        <p>Every sale shows cost, profit, and break-even live. Raise prices, cut supplier costs, or run meal deals — find what works.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🚚 Grow the empire</h3>
+                        <p>Food truck → restaurant → chain. Unlock chef, server, manager as you climb. 25 random events keep each day honest.</p>
+                    </div>
+                </div>
+            </section>
+
+            <button id="startGame" class="start-button arcade-button">Start Your Empire</button>
+        </main>
+
+        <!-- Resume saved-game modal — surfaces only when Start is clicked and a save exists -->
+        <div id="resumeModal" class="resume-modal hidden" aria-hidden="true">
+            <div class="resume-modal-backdrop"></div>
+            <div class="resume-modal-card arcade-border" role="dialog" aria-modal="true">
+                <h3>Welcome back!</h3>
+                <p class="muted">You have a game in progress.</p>
+                <div id="resumeSnapshot"></div>
+                <div class="resume-actions">
+                    <button id="resumeGame" class="arcade-button primary">Resume</button>
+                    <button id="startFresh" class="arcade-button">Start Fresh</button>
+                </div>
+                <p class="resume-warn">Starting fresh will wipe your saved progress.</p>
+            </div>
+        </div>
+
+        <!-- Setup Screen -->
+        <div id="setupScreen" class="setup-screen hidden">
+            <div class="setup-content arcade-border">
+                <h2>Setup Your Business</h2>
+                
+                <!-- Step 1: Food Type -->
+                <div class="setup-step active" id="step1">
+                    <h3>Step 1: Pick Your Food</h3>
+                    <div class="food-options">
+                        <button class="arcade-button food-option" data-food="sandwiches">
+                            <h4>Sandwiches</h4>
+                            <p>Classic deli sandwiches with fresh ingredients</p>
+                        </button>
+                        <button class="arcade-button food-option" data-food="pizza">
+                            <h4>Pizza</h4>
+                            <p>Authentic Italian-style pizza</p>
+                        </button>
+                        <button class="arcade-button food-option" data-food="tacos">
+                            <h4>Tacos</h4>
+                            <p>Street tacos with fresh salsa and handmade tortillas</p>
+                        </button>
+                        <button class="arcade-button food-option" data-food="burgers">
+                            <h4>Burgers</h4>
+                            <p>Smash burgers, crispy fries, fast service</p>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Business Name -->
+                <div class="setup-step" id="step2">
+                    <h3>Step 2: Name Your Business</h3>
+                    <input type="text" id="businessName" class="arcade-input" placeholder="Enter business name">
+                    <button class="arcade-button primary next-step">Next</button>
+                </div>
+
+                <!-- Step 3: Location -->
+                <div class="setup-step" id="step3">
+                    <h3>Step 3: Choose Your Location</h3>
+                    <div class="location-options" id="locationOptions">
+                        <!-- Locations will be generated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Step 4: Difficulty -->
+                <div class="setup-step" id="step4">
+                    <h3>Step 4: Choose Difficulty</h3>
+                    <div class="difficulty-options">
+                        <button class="arcade-button difficulty-option" data-difficulty="easy">
+                            <h4>Easy</h4>
+                            <p>More starting money, lower costs</p>
+                        </button>
+                        <button class="arcade-button difficulty-option" data-difficulty="normal">
+                            <h4>Normal</h4>
+                            <p>Balanced gameplay</p>
+                        </button>
+                        <button class="arcade-button difficulty-option" data-difficulty="hard">
+                            <h4>Hard</h4>
+                            <p>Less starting money, higher costs</p>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 5: Review -->
+                <div class="setup-step" id="step5">
+                    <h3>Step 5: Review Your Choices</h3>
+                    <div class="review-content">
+                        <p>Business Name: <span id="reviewName"></span></p>
+                        <p>Food Type: <span id="reviewFood"></span></p>
+                        <p>Location: <span id="reviewLocation"></span></p>
+                        <p>Difficulty: <span id="reviewDifficulty"></span></p>
+                    </div>
+                    <div class="review-buttons">
+                        <button class="arcade-button" id="startOver">Start Over</button>
+                        <button class="arcade-button" id="beginGame">Begin Game</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Interface -->
+        <div id="gameInterface" class="game-interface hidden">
+            <div class="game-header">
+                <div class="game-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Money:</span>
+                        <span id="money" class="stat-value">$10,000</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Reputation:</span>
+                        <span id="reputation" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Day:</span>
+                        <span id="day" class="stat-value">1</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="game-content">
+                <div class="game-sidebar">
+                    <div class="game-menu">
+                        <button class="menu-button active arcade-button" data-tab="business">Business</button>
+                        <button class="menu-button arcade-button" data-tab="recipe">Recipe</button>
+                        <button class="menu-button arcade-button" data-tab="suppliers">Suppliers</button>
+                        <button class="menu-button arcade-button" data-tab="employees">Employees</button>
+                        <button class="menu-button arcade-button" data-tab="marketing">Marketing</button>
+                        <button class="menu-button arcade-button" data-tab="upgrades">Upgrades</button>
+                    </div>
+                </div>
+
+                <div class="game-main">
+                    <!-- Business Tab -->
+                    <div class="game-tab active" id="businessTab">
+                        <h2>Your Business</h2>
+                        <div class="business-info">
+                            <div class="business-status arcade-border">
+                                <h3>Current Status</h3>
+                                <p>Name: <span id="businessNameDisplay"></span></p>
+                                <p>Type: <span id="businessType">Food Truck</span></p>
+                                <p>Location: <span id="businessLocation"></span></p>
+                                <p>Daily Customers: <span id="dailyCustomers">0</span></p>
+                            </div>
+                            <div class="business-actions">
+                                <button class="action-button arcade-button primary" id="nextDay">Next Day</button>
+                                <button class="action-button arcade-button" id="saveGame">Save</button>
+                                <button class="action-button arcade-button" id="loadGame">Load</button>
+                                <button class="action-button arcade-button tutorial-button" id="showTutorial">Tutorial</button>
+                                <button class="action-button arcade-button restart-button" id="restartGame">Start Over</button>
+                            </div>
+                        </div>
+
+                        <div class="inventory-panel">
+                            <h3>In the truck</h3>
+                            <div class="inventory-grid" id="inventoryGrid">
+                                <!-- Filled by UIManager.updateInventoryPanel -->
+                            </div>
+                            <div id="inventoryWarning"></div>
+                        </div>
+
+                        <div class="pricing-panel">
+                            <h3>Menu pricing</h3>
+                            <div class="pricing-grid">
+                                <div class="pricing-tile sell">
+                                    <span class="tile-label">Sell price</span>
+                                    <div class="sell-row">
+                                        <button class="arcade-button price-nudge" data-dir="-1">−</button>
+                                        <span class="tile-value" id="currentPrice">$0</span>
+                                        <button class="arcade-button price-nudge" data-dir="1">+</button>
+                                    </div>
+                                    <span class="tile-hint" id="priceHint">Base price</span>
+                                </div>
+                                <div class="pricing-tile cost">
+                                    <span class="tile-label">Cost per sale</span>
+                                    <span class="tile-value" id="costPerSale">$0</span>
+                                    <span class="tile-hint" id="costHint">Ingredients + packaging</span>
+                                </div>
+                                <div class="pricing-tile profit">
+                                    <span class="tile-label">Profit per sale</span>
+                                    <span class="tile-value" id="profitPerSale">$0</span>
+                                    <span class="tile-hint" id="profitHint">Sell − cost</span>
+                                </div>
+                                <div class="pricing-tile breakeven">
+                                    <span class="tile-label">Break-even price</span>
+                                    <span class="tile-value" id="breakEvenPrice">$0</span>
+                                    <span class="tile-hint" id="breakEvenHint">Covers fixed costs at today's pace</span>
+                                </div>
+                            </div>
+                            <p class="pricing-note muted">Lower prices pull more buyers. Higher prices scare them off. Updates live as you change the recipe or supplier tiers.</p>
+                        </div>
+
+                        <div class="finances-panel">
+                            <h3>Monthly overhead</h3>
+                            <div class="finances-grid" id="financesGrid">
+                                <!-- Filled by UIManager.updateFinancesPanel -->
+                            </div>
+                            <div class="finances-summary" id="financesSummary"></div>
+                        </div>
+
+                        <div class="journal-panel">
+                            <h3>Daily journal</h3>
+                            <div class="journal-list" id="journalList">
+                                <p class="muted">No days logged yet. Hit Next Day to get started.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recipe Tab -->
+                    <div class="game-tab" id="recipeTab">
+                        <h2>Recipe Builder</h2>
+                        <p class="muted" style="margin-bottom: var(--s-lg);">Design what goes into each sale. Toggle ingredients on or off — each choice affects your price, conversion, and which suppliers show up for you.</p>
+
+                        <div class="recipe-builder">
+                            <div class="recipe-summary" id="recipeSummary">
+                                <!-- Live preview: current recipe + final sell price -->
+                            </div>
+
+                            <div class="recipe-section">
+                                <h3>Core ingredients</h3>
+                                <p class="recipe-section-note muted">The basics. Skipping one costs <strong>−15% conversion</strong> per missing core.</p>
+                                <div class="recipe-chips" id="recipeCoreChips">
+                                    <!-- Rendered by UIManager.updateRecipePanel -->
+                                </div>
+                            </div>
+
+                            <div class="recipe-section">
+                                <h3>Toppings & addons</h3>
+                                <p class="recipe-section-note muted">Opt-in extras. Each one adds to the sell price and gives a small conversion bump. Using a topping means stocking it.</p>
+                                <div class="recipe-chips" id="recipeAddonChips">
+                                    <!-- Rendered by UIManager.updateRecipePanel -->
+                                </div>
+                            </div>
+
+                            <div class="recipe-section">
+                                <h3>Meal deal</h3>
+                                <p class="recipe-section-note muted">Bundle drink + side for a +$5 price bump. Each meal sale also consumes 🥤 and 🍟.</p>
+                                <div class="meal-toggle-row" id="mealToggleRow">
+                                    <!-- Rendered by UIManager.updateRecipePanel -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Employees Tab -->
+                    <div class="game-tab" id="employeesTab">
+                        <h2>Employees</h2>
+                        <div class="employees-list">
+                            <div class="employee-card arcade-border">
+                                <h3>Current Employees</h3>
+                                <div id="currentEmployees">No employees hired yet</div>
+                            </div>
+                            <div class="employee-card arcade-border">
+                                <h3>Hire New Employee</h3>
+                                <div class="employee-select-container">
+                                    <select id="employeeType" class="arcade-select">
+                                        <option value="cook">Cook ($1,800/month)</option>
+                                        <option value="cashier">Cashier ($1,200/month)</option>
+                                    </select>
+                                    <button class="action-button arcade-button" id="hireEmployee">Hire</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Suppliers Tab -->
+                    <div class="game-tab" id="suppliersTab">
+                        <h2>Suppliers</h2>
+                        <div class="market-banner" id="marketBanner"></div>
+                        <div class="suppliers-list" id="suppliersList">
+                            <!-- Dynamically filled by UIManager.updateSuppliersTab -->
+                        </div>
+                    </div>
+
+                    <!-- Marketing Tab -->
+                    <div class="game-tab" id="marketingTab">
+                        <h2>Marketing</h2>
+                        <div class="marketing-options">
+                            <div class="marketing-card arcade-border">
+                                <h3>Social Media</h3>
+                                <p class="marketing-status" id="marketingStatus">Followers: <span id="followerCount">0</span></p>
+                                <div class="marketing-item">
+                                    <div class="marketing-info">
+                                        <span>Camera & Mic Setup</span>
+                                        <p class="item-desc">Start creating content for social media</p>
+                                    </div>
+                                    <span class="price">$5,000</span>
+                                    <button class="action-button arcade-button marketing-button" data-marketing="cameraSetup" id="buyMarketing">Purchase</button>
+                                </div>
+                                <div class="marketing-item">
+                                    <div class="marketing-info">
+                                        <span>Social Media Ads</span>
+                                        <p class="item-desc">Monthly advertising campaign (+25 followers/day)</p>
+                                    </div>
+                                    <span class="price">$500/month</span>
+                                    <button class="action-button arcade-button marketing-button" data-marketing="socialMediaAds">Purchase</button>
+                                </div>
+                                <div class="marketing-item">
+                                    <div class="marketing-info">
+                                        <span>Influencer Collaboration</span>
+                                        <p class="item-desc">Partner with local food influencer (+100 followers, higher viral chance)</p>
+                                    </div>
+                                    <span class="price">$2,000</span>
+                                    <button class="action-button arcade-button marketing-button" data-marketing="influencerCollab">Purchase</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upgrades Tab -->
+                    <div class="game-tab" id="upgradesTab">
+                        <h2>Upgrades</h2>
+                        <div class="upgrades-list">
+                            <div class="upgrade-card arcade-border">
+                                <h3>Equipment Upgrades</h3>
+                                <div class="upgrade-item">
+                                    <div class="upgrade-info">
+                                        <span>Better Kitchen Equipment</span>
+                                        <p class="item-desc">Faster cooking, better food quality</p>
+                                    </div>
+                                    <span class="price">$3,000</span>
+                                    <button class="action-button arcade-button upgrade-button" data-upgrade="kitchenEquipment">Purchase</button>
+                                </div>
+                                <div class="upgrade-item">
+                                    <div class="upgrade-info">
+                                        <span>Improved Seating</span>
+                                        <p class="item-desc">More customers, higher spending</p>
+                                    </div>
+                                    <span class="price">$2,500</span>
+                                    <button class="action-button arcade-button upgrade-button" data-upgrade="seating">Purchase</button>
+                                </div>
+                                <div class="upgrade-item">
+                                    <div class="upgrade-info">
+                                        <span>Sound System</span>
+                                        <p class="item-desc">Better atmosphere, more customers</p>
+                                    </div>
+                                    <span class="price">$1,500</span>
+                                    <button class="action-button arcade-button upgrade-button" data-upgrade="soundSystem">Purchase</button>
+                                </div>
+                                <div class="upgrade-item">
+                                    <div class="upgrade-info">
+                                        <span>Commercial Refrigerator</span>
+                                        <p class="item-desc">Reduce ingredient waste by 30%</p>
+                                    </div>
+                                    <span class="price">$4,000</span>
+                                    <button class="action-button arcade-button upgrade-button" data-upgrade="fridgeUpgrade">Purchase</button>
+                                </div>
+                            </div>
+
+                            <!-- Business Progression — big-ticket, sits at the bottom -->
+                            <div class="upgrade-card arcade-border progression-card">
+                                <h3>Business Progression</h3>
+                                <div class="progression-status">
+                                    <p>Current Stage: <span id="businessStage">Food Truck</span></p>
+                                    <p>Progress to Next: <span id="progressToNext">$0 / $40,000</span></p>
+                                </div>
+                                <div class="progression-item" id="restaurantUpgrade">
+                                    <div class="progression-info">
+                                        <span>Upgrade to Restaurant</span>
+                                        <p class="item-desc">Open a proper restaurant! Unlocks new employees (Chef, Server, Manager), more capacity, and higher revenue potential.</p>
+                                    </div>
+                                    <span class="price">$40,000</span>
+                                    <button class="action-button arcade-button progression-button" data-progression="restaurant">Upgrade</button>
+                                </div>
+                                <div class="progression-item locked" id="chainUpgrade">
+                                    <div class="progression-info">
+                                        <span>Expand to Chain</span>
+                                        <p class="item-desc">Open a second location! Requires restaurant level first.</p>
+                                    </div>
+                                    <span class="price">$120,000</span>
+                                    <button class="action-button arcade-button progression-button" data-progression="chain" disabled>Locked</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>© 2026 Food Empire Tycoon · Built by <a class="footer-link" href="https://carsoncaplan.com" target="_blank" rel="noopener">Carson Caplan</a> — visit <a class="footer-link" href="https://carsoncaplan.com" target="_blank" rel="noopener">carsoncaplan.com</a> for more</p>
+        </footer>
+
+        <!-- Day recap modal — popup daily summary + journal browser -->
+        <div class="day-modal hidden" id="dayModal" aria-hidden="true">
+            <div class="day-modal-backdrop" data-modal-close></div>
+            <div class="day-modal-card" role="dialog" aria-modal="true">
+                <div class="day-modal-header">
+                    <div class="day-modal-title" id="dayModalTitle">Day</div>
+                    <button class="day-modal-close" data-modal-close aria-label="Close">×</button>
+                </div>
+                <div class="day-modal-body" id="dayModalBody">
+                    <!-- Filled by UIManager.openDayModal -->
+                </div>
+                <div class="day-modal-footer">
+                    <button class="arcade-button day-modal-prev" id="dayModalPrev">← Prev</button>
+                    <span class="day-modal-counter" id="dayModalCounter"></span>
+                    <button class="arcade-button day-modal-next" id="dayModalNext">Next →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Game Modules -->
+    <script src="js/modules/GameData.js"></script>
+    <script src="js/modules/GameState.js"></script>
+    <script src="js/modules/TutorialManager.js"></script>
+    <script src="js/game/BusinessLogic.js"></script>
+    <script src="js/ui/UIManager.js"></script>
+    <script src="js/ui/SetupManager.js"></script>
+    <script src="js/game/GameController.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
