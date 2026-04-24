@@ -13,6 +13,10 @@ python -m http.server 8080
 # Visit http://localhost:8080
 ```
 
+## Hosting
+
+Production is self-hosted on a Raspberry Pi, served at **[foodempiretycoon.com](https://foodempiretycoon.com)**. Since the game is a static SPA (no build step, no backend, all state in `localStorage`), any basic HTTP server works — nginx, Apache, or even `python -m http.server` behind a reverse proxy. Deploys are just a `git pull` on the Pi after pushing to GitHub (`origin/main`).
+
 **Hard-refresh (Ctrl+Shift+R) after code changes.** The cache holds JS/CSS aggressively.
 
 Parse-check JS before assuming edits work:

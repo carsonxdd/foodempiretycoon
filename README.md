@@ -102,6 +102,10 @@ Auto-saves on tab switch and page close. Manual save/load buttons on the Busines
 - Retro look: `Press Start 2P` headings, `VT323` body, subtle CRT scanline overlay over a deep-navy palette
 - Mobile-friendly layout (single column below 1024px) — desktop-first
 
+## Hosting
+
+Self-hosted on a Raspberry Pi, served at [foodempiretycoon.com](https://foodempiretycoon.com). Because the game is a single-page static site (`index.html` + `css/` + `js/`), it runs happily off any basic HTTP server — nginx, Apache, or even `python -m http.server` behind a reverse proxy. No build step, no backend, no database — all state lives in the player's `localStorage`.
+
 ## File structure
 
 ```
