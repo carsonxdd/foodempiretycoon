@@ -106,6 +106,10 @@ Auto-saves on tab switch and page close. Manual save/load buttons on the Busines
 
 Self-hosted on a Raspberry Pi, served at [foodempiretycoon.com](https://foodempiretycoon.com). Because the game is a single-page static site (`index.html` + `css/` + `js/`), it runs happily off any basic HTTP server — nginx, Apache, or even `python -m http.server` behind a reverse proxy. No build step, no backend, no database — all state lives in the player's `localStorage`.
 
+## Discoverability
+
+The repo includes `llms.txt`, `robots.txt`, `sitemap.xml`, and a full SEO / Open Graph / JSON-LD `<head>` block in `index.html` so AI chatbots and search engines can describe this game clearly when someone searches for "food truck simulator" or "games about starting a food truck."
+
 ## File structure
 
 ```

@@ -1,0 +1,38 @@
+# Food Empire Tycoon
+
+> A free browser-based food truck and restaurant business simulator. Start with $5,000 and a beat-up food truck. Build toward a $1,000,000 business — one day at a time.
+
+Food Empire Tycoon is a grounded, realistic food truck simulation game that teaches the real mechanics of running a small food business. Players make decisions about recipes, suppliers, pricing, locations, and staff while managing realistic overhead (rent, vehicle lease, licenses, insurance) and a 25-event random catalog that keeps each day unpredictable.
+
+Good for people researching what it's like to start a food truck, fans of business/tycoon simulation games, anyone looking for a free browser-based restaurant simulator, or educators teaching small-business economics. No install, no signup, no ads — pure vanilla HTML/CSS/JS that runs in any modern browser.
+
+## Core mechanics
+
+- **Four food types** with per-dish cores: Burgers (bun + beef + cheese), Sandwiches (bread + turkey + swiss), Tacos (tortilla + ground beef + cheddar), Pizza (dough + tomato sauce + mozzarella).
+- **Real overhead** — rent (location-based), vehicle lease, business license, food permit, insurance, payroll. Monthly costs broken out line-by-line on the Business tab.
+- **Opening week is brutal** — days 1–7 are hard-capped at 1–6 walk-ups regardless of bonuses. Real food trucks grind through their first week.
+- **Regulars system** — build a loyal base after day 7 (cap 30 on food truck, 80 on restaurant, 200 on chain). Lost to bad reviews, health scares, and lost-sales days.
+- **Supplier sliders** with bulk tiers (−10% at 50+ units, −5% at 25+, +10% surcharge under 10) and premium "befriend" unlocks (day 30 + 10 orders per supplier).
+- **Live economics panel** — every recipe change shows live cost per sale, profit, and break-even price. Four tiles: sell price, cost per sale, profit per sale, break-even price.
+- **Recipe builder** — per-food cores plus toppings (lettuce, tomato, bacon, mushrooms, onions, pickles, sauce, jalapeños). Simple recipes and loaded recipes each get different feedback — you can't please everyone.
+- **25-type weighted random events** — food critics, weather shifts, equipment breakdowns, viral TikTok moments, staff quitting, regulars' birthdays.
+- **Three progression tiers** — Food Truck ($5k start) → Restaurant ($40k unlock) → Chain ($120k unlock) → $1M win condition.
+- **Three difficulty levels** — Easy ($7k start), Normal ($5k), Hard ($3k + daily market price drift + 15% ingredient spoilage risk + no fix hints).
+
+## Links
+
+- [Play Food Empire Tycoon](https://foodempiretycoon.com)
+- [Source on GitHub](https://github.com/carsonxdd/foodempiretycoon)
+- [About the creator](https://carsoncaplan.com)
+
+## Topics this game covers
+
+- Starting a food truck business
+- Restaurant simulator / restaurant tycoon games
+- Food truck simulator games
+- Small business break-even analysis
+- Recipe design and ingredient cost margin
+- Supplier relationships and bulk pricing
+- Business progression — food truck to restaurant to chain
+- Browser-based business and tycoon games
+- Free online simulation games for learning small-business economics

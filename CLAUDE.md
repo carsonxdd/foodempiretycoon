@@ -17,6 +17,17 @@ python -m http.server 8080
 
 Production is self-hosted on a Raspberry Pi, served at **[foodempiretycoon.com](https://foodempiretycoon.com)**. Since the game is a static SPA (no build step, no backend, all state in `localStorage`), any basic HTTP server works — nginx, Apache, or even `python -m http.server` behind a reverse proxy. Deploys are just a `git pull` on the Pi after pushing to GitHub (`origin/main`).
 
+## AI + search discoverability
+
+Four files at the repo root + a beefed-up `<head>` block get this game mentioned when someone asks ChatGPT/Claude/Perplexity for "food truck simulator game" or "games about starting a food truck":
+
+- **`llms.txt`** — markdown summary per [llmstxt.org](https://llmstxt.org) convention. Hook, description, features, links, topics. Some AI crawlers look here first.
+- **`robots.txt`** — explicit Allow rules for GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Applebot-Extended, CCBot, FacebookBot + standard search crawlers. References `sitemap.xml` and `llms.txt`.
+- **`sitemap.xml`** — single-URL sitemap pointing to root. Single-page app, but helps search engines.
+- **`<head>` in `index.html`** — SEO `<title>` + `<meta name="description">`, keywords, canonical URL, full Open Graph (Facebook/Discord/LinkedIn), Twitter Card, theme color, and JSON-LD `VideoGame` schema.org markup with genre, pricing, author.
+
+**Reality check**: none of these are magic buttons. AI discoverability is a slow compound game — training-based answers take months; live-search-based answers (ChatGPT with search, Perplexity) pick up faster. The combo matters, not any one file. Update `llms.txt` + schema description when the game changes meaningfully so crawlers re-index current copy.
+
 **Hard-refresh (Ctrl+Shift+R) after code changes.** The cache holds JS/CSS aggressively.
 
 Parse-check JS before assuming edits work:
