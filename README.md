@@ -127,7 +127,10 @@ js/ui/SetupManager.js           Setup wizard
 
 ## Current state
 
+**Now live at [foodempiretycoon.com](https://foodempiretycoon.com)** — self-hosted on a Raspberry Pi, source on [GitHub](https://github.com/carsonxdd/foodempiretycoon).
+
 Feature-complete for the core loop. Recent additions:
+- **Public release** — pushed to GitHub, hosted on a Pi at the production domain, with `llms.txt` + `robots.txt` + `sitemap.xml` + full SEO/Open Graph/JSON-LD `<head>` so AI chatbots and search engines describe the game when users search for food truck or restaurant simulators
 - **Alive landing page** — amber-glow title pulse, rolling customer-quote ticker pulling from the real feedback pool, ambient floating food emojis drifting behind the content, and punchier copy ("Your food. Your grind. Your rules.")
 - **Deferred save prompt** — no dialog at page load; clicking Start Your Empire surfaces a styled Resume / Start Fresh modal only when there's a saved game
 - Per-food core recipes (burger = bun+beef+cheese, pizza = dough+sauce+mozz, etc.) with menu-facing display names
