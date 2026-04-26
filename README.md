@@ -104,7 +104,7 @@ Auto-saves on tab switch and page close. Manual save/load buttons on the Busines
 
 ## Hosting
 
-Self-hosted on a Raspberry Pi, served at [foodempiretycoon.com](https://foodempiretycoon.com). Because the game is a single-page static site (`index.html` + `css/` + `js/`), it runs happily off any basic HTTP server — nginx, Apache, or even `python -m http.server` behind a reverse proxy. No build step, no backend, no database — all state lives in the player's `localStorage`.
+Self-hosted on a Raspberry Pi, served at [foodempiretycoon.com](https://foodempiretycoon.com). Public traffic arrives through a Cloudflare Tunnel — no port forwarding, no static IP needed — terminating at nginx, which serves the static files directly. Because the game is a single-page static site (`index.html` + `css/` + `js/`), it runs happily off any basic HTTP server. No build step, no backend, no database — all state lives in the player's `localStorage`.
 
 ## Discoverability
 
