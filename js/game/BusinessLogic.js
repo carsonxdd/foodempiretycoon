@@ -441,7 +441,7 @@ class BusinessLogic {
             loaded: extras >= 3,
         };
 
-        const feedback = this.generateFeedbackBubbles(feedbackContext, netProfit, events);
+        const feedback = this.generateFeedbackBubbles(feedbackContext, netProfit, events, customers);
         const narrative = this.generateNarrative(customers, revenue, netProfit, events);
 
         const result = {
@@ -476,7 +476,10 @@ class BusinessLogic {
     }
 
     // Pick 2-4 feedback bubbles for the day. Ratio skews to the day's mood.
-    generateFeedbackBubbles(context, netProfit, events) {
+    // Capped at `customers` so a 1-walkup day doesn't produce 3 named quotes.
+    generateFeedbackBubbles(context, netProfit, events, customers) {
+        if (!customers || customers <= 0) return [];
+
         const hadBadEvent = events.some(e =>
             e.type === 'bad_review' || e.type === 'health_scare' || e.type === 'equipment_breakdown');
 
@@ -490,6 +493,16 @@ class BusinessLogic {
         } else {
             positiveCount = 2;
             negativeCount = 1;
+        }
+
+        // Trim total to actual walkups, dropping negatives first on good days
+        // and positives first on bad days so the surviving bubbles still match the mood.
+        const trimNegativesFirst = !(hadBadEvent || netProfit < 0);
+        while (positiveCount + negativeCount > customers) {
+            if (trimNegativesFirst && negativeCount > 0) negativeCount--;
+            else if (!trimNegativesFirst && positiveCount > 0) positiveCount--;
+            else if (negativeCount > 0) negativeCount--;
+            else positiveCount--;
         }
 
         const bubbles = [];

@@ -56,7 +56,7 @@ Click **Next Day** on the Business tab. A modal pops up with:
 - **Snapshot tiles** — cash, reputation, regulars, employees, followers
 - **Collapsible numbers** — full revenue/cost breakdown
 - **Events** — weather, food critics, equipment breakdowns, regulars' birthdays, staff quitting (25 types, 3–5 variants each)
-- **Named customer comments** as chat bubbles — 2–4 voices per day
+- **Named customer comments** as chat bubbles — up to 4 voices per day, capped at actual walkup count (a 1-customer day = at most 1 bubble)
 - **💡 Fix hints** under each complaint pointing at the game lever that addresses it (hidden on Hard)
 
 Past days live in a **journal list** on the Business tab. Click any entry to browse history with prev/next navigation.
