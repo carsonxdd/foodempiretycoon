@@ -20,12 +20,24 @@ class BusinessLogic {
 
         // Opening week: real food trucks get 2-5 a day at best.
         // Day 1 is the quietest; numbers drift up slowly through the week.
+        // Easy mode plays the same shape but louder — bigger base, gentler
+        // ramp, higher cap, and the difficulty's customerMultiplier applies
+        // (normal/hard's openings stay grounded — only easy gets the cushion).
         if (day <= openingWeek) {
-            const dayCurve = 0.6 + (day / openingWeek) * 0.4; // 0.7 on day 1, 1.0 on day 7
-            const base = 1 + Math.floor(Math.random() * 3); // 1-3
+            const isEasy = setup.difficulty === 'easy';
+            const dayCurve = isEasy
+                ? 0.85 + (day / openingWeek) * 0.15  // 0.97 on day 1 → 1.0 on day 7
+                : 0.6  + (day / openingWeek) * 0.4;  // 0.66 on day 1 → 1.0 on day 7
+            const baseLow  = isEasy ? 3 : 1;
+            const baseSpan = isEasy ? 4 : 3;         // easy: 3-6, otherwise: 1-3
+            const base = baseLow + Math.floor(Math.random() * baseSpan);
             const locationBump = (location?.modifiers?.customerBase || 1.0) * 0.15;
-            const opening = Math.max(1, Math.floor(base * (1 + locationBump) * dayCurve));
-            return Math.min(6, Math.floor(opening * eventModifiers.customerMultiplier));
+            const diffMult = isEasy ? difficulty.customerMultiplier : 1.0;
+            const floor = isEasy ? 3 : 1;
+            const cap   = isEasy ? 12 : 6;
+            const opening = Math.max(floor,
+                Math.floor(base * (1 + locationBump) * dayCurve * diffMult));
+            return Math.min(cap, Math.floor(opening * eventModifiers.customerMultiplier));
         }
 
         // Past opening week: normal formula + regulars layer.
@@ -36,9 +48,15 @@ class BusinessLogic {
         if (businessType === 'restaurant') baseCustomers *= 1.8;
         else if (businessType === 'chain') baseCustomers *= 3.0;
 
-        // Employee bonus — diminishing returns
-        const empCount = this.gameState.employees.length;
-        const employeeBonus = empCount > 0 ? Math.floor(Math.pow(empCount, 0.7) * 3) : 0;
+        // Employee bonus — diminishing returns, scaled by avg training level.
+        const employees = this.gameState.employees;
+        const empCount = employees.length;
+        const avgEmpMult = empCount > 0
+            ? employees.reduce((s, e) => s + GameData.getEmployeeBenefitMultiplier(e), 0) / empCount
+            : 1;
+        const employeeBonus = empCount > 0
+            ? Math.floor(Math.pow(empCount, 0.7) * 3 * avgEmpMult)
+            : 0;
 
         // Reputation now accumulates slower → bonus kicks in slower too.
         const reputationBonus = Math.floor(this.gameState.reputation / 50);
@@ -59,6 +77,11 @@ class BusinessLogic {
 
         const dayModifier = this.getDayOfWeekModifier();
 
+        // Rival truck momentum (0-100, 50 = neutral) tugs against walk-ups —
+        // ±12.5% swing at the extremes. See updateRivalTruck for how it drifts.
+        const rivalMomentum = this.gameState.rivalTruck.momentum;
+        const rivalFactor = 1 - (rivalMomentum - 50) / 400;
+
         // Regulars layer: most of your built-up regulars show up.
         const regularsToday = Math.floor(this.gameState.regulars * (0.7 + Math.random() * 0.3));
 
@@ -66,6 +89,7 @@ class BusinessLogic {
             (baseCustomers + employeeBonus + reputationBonus + marketingBonus + upgradeBonus)
             * dayModifier
             * eventModifiers.customerMultiplier
+            * rivalFactor
         );
 
         return Math.max(1, walkUps + regularsToday);
@@ -151,10 +175,10 @@ class BusinessLogic {
         const difficulty = GameData.getDifficultySettings(this.gameState.setup.difficulty);
         const businessType = this.gameState.business.type;
 
-        // Employee costs (monthly salary / 30 days)
+        // Employee costs (monthly salary / 30 days). Salary scales with
+        // employee level via GameData.getEmployeeSalary.
         const employeeCosts = this.gameState.employees.reduce((total, emp) => {
-            const empData = GameData.getEmployeeType(emp.type);
-            return total + (empData ? empData.salary / 30 : 0);
+            return total + (GameData.getEmployeeSalary(emp) / 30);
         }, 0);
 
         // Location rent
@@ -172,7 +196,7 @@ class BusinessLogic {
         const insuranceCost = fixed.insurance       / 30;
 
         // Disposables/packaging/gas per sale
-        let disposablesCost = actualSales * 2;
+        let disposablesCost = actualSales * 0.4;
         disposablesCost *= eventModifiers.costMultiplier;
 
         // Recurring marketing
@@ -229,13 +253,19 @@ class BusinessLogic {
             if (addon?.appealBonus) baseRate += addon.appealBonus;
         });
 
-        // Employee improvements
+        // Employee improvements — bonuses scale with training level via
+        // GameData.getEmployeeBenefitMultiplier (L1=1.0, L2=1.5, L3=2.0).
         const cashiers = this.gameState.employees.filter(emp => emp.type === 'cashier');
         const cooks = this.gameState.employees.filter(emp => emp.type === 'cook');
 
-        // Each employee type improves conversion, but with diminishing returns.
-        if (cashiers.length > 0) baseRate += 0.15;
-        if (cooks.length > 0) baseRate += 0.1 * Math.sqrt(cooks.length);
+        if (cashiers.length > 0) {
+            const bestMult = Math.max(...cashiers.map(c => GameData.getEmployeeBenefitMultiplier(c)));
+            baseRate += 0.15 * bestMult;
+        }
+        if (cooks.length > 0) {
+            const avgMult = cooks.reduce((s, c) => s + GameData.getEmployeeBenefitMultiplier(c), 0) / cooks.length;
+            baseRate += 0.1 * Math.sqrt(cooks.length) * avgMult;
+        }
 
         // Upgrade improvements
         if (this.gameState.upgrades.kitchenEquipment) {
@@ -255,8 +285,8 @@ class BusinessLogic {
     // --- Live economics helpers (used by the pricing panel) -----------------
 
     // What each sale costs in ingredients, using the *current* recipe,
-    // supplier tier per ingredient, and live market prices. Plus $2/sale for
-    // disposables/packaging/gas (matches calculateDailyCosts).
+    // supplier tier per ingredient, and live market prices. Plus $0.40/sale
+    // for disposables/packaging/gas (matches calculateDailyCosts).
     calculatePerSaleIngredientCost() {
         const setup = this.gameState.setup;
         const consumption = GameData.computeRecipeConsumption(setup);
@@ -272,7 +302,7 @@ class BusinessLogic {
             const unitCost = (supplier.basePrice / 10) * tierMult * marketMult;
             cost += units * unitCost;
         });
-        return cost + 2; // disposables/packaging/gas
+        return cost + 0.4; // disposables/packaging/gas
     }
 
     // Rough daily-sales projection used for break-even allocation. Assumes a
@@ -299,8 +329,12 @@ class BusinessLogic {
         else if (businessType === 'chain') walkUps *= 3.0;
 
         // Employee / marketing / upgrade bonuses (match calculateDailyCustomers).
-        const empCount = this.gameState.employees.length;
-        const employeeBonus = empCount > 0 ? Math.pow(empCount, 0.7) * 3 : 0;
+        const employees = this.gameState.employees;
+        const empCount = employees.length;
+        const avgEmpMult = empCount > 0
+            ? employees.reduce((s, e) => s + GameData.getEmployeeBenefitMultiplier(e), 0) / empCount
+            : 1;
+        const employeeBonus = empCount > 0 ? Math.pow(empCount, 0.7) * 3 * avgEmpMult : 0;
         const reputationBonus = this.gameState.reputation / 50;
         let marketingBonus = 0;
         if (this.gameState.marketing.hasCameraSetup) {
@@ -328,8 +362,7 @@ class BusinessLogic {
         else if (businessType === 'chain') rent *= 4;
 
         const employeeMonthly = this.gameState.employees.reduce((sum, e) => {
-            const data = GameData.getEmployeeType(e.type);
-            return sum + (data?.salary || 0);
+            return sum + GameData.getEmployeeSalary(e);
         }, 0);
 
         const marketing = this.gameState.marketing.hasSocialMediaAds
@@ -414,9 +447,14 @@ class BusinessLogic {
         // Regulars: start building after opening week, grow on good days,
         // shed on bad ones. Capped by business type.
         this.processRegulars(events, netProfit, revenue.lostSales);
+        const newRegular = this.updateRegularCustomers();
+        const rivalShift = this.updateRivalTruck();
 
         // Advance day
         this.gameState.nextDay();
+
+        // Advance any in-progress employee training and complete it if done.
+        this.processEmployeeTraining();
 
         // Build feedback context from the actual day's state.
         const locationTypeToCustomer = {
@@ -439,10 +477,20 @@ class BusinessLogic {
             customerType: locationTypeToCustomer[this.gameState.setup.location?.type],
             simple: coresPresent && extras === 0,
             loaded: extras >= 3,
+            rivalPressure: this.gameState.rivalTruck.momentum >= 65,
+            rivalDominant: this.gameState.rivalTruck.momentum <= 35,
+            // Raw signals for messageGuards — let line/crowd lines drop at
+            // low traffic, "nobody here" lines drop on busy days, and
+            // returning-regular lines hold off until past opening week.
+            customers,
+            actualSales: revenue.actualSales,
+            walkers: Math.max(0, customers - revenue.actualSales),
+            day: this.gameState.day - 1, // closing day, since nextDay() already advanced
         };
 
-        const feedback = this.generateFeedbackBubbles(feedbackContext, netProfit, events, customers);
-        const narrative = this.generateNarrative(customers, revenue, netProfit, events);
+        const feedback = this.generateFeedbackBubbles(
+            feedbackContext, netProfit, events, customers, revenue.actualSales);
+        const narrative = this.generateNarrative(customers, revenue, netProfit, events, feedbackContext.day);
 
         const result = {
             customers,
@@ -453,6 +501,8 @@ class BusinessLogic {
             events,
             feedback,
             narrative,
+            newRegular,
+            rivalShift,
         };
 
         // Persist a snapshot so the player can revisit any day later.
@@ -477,16 +527,27 @@ class BusinessLogic {
 
     // Pick 2-4 feedback bubbles for the day. Ratio skews to the day's mood.
     // Capped at `customers` so a 1-walkup day doesn't produce 3 named quotes.
-    generateFeedbackBubbles(context, netProfit, events, customers) {
+    // Positives are further capped at `actualSales` — only buyers can rave
+    // about food they didn't eat. Walkers (customers - actualSales) feed a
+    // walkedAway pool ("saw the price and kept walking") proportional to the
+    // walker share of the day. Easy mode keeps a 1-positive floor on
+    // zero-sale days, drawn from an ambient bucket of passer-by lines that
+    // read fine from someone who didn't actually eat.
+    generateFeedbackBubbles(context, netProfit, events, customers, actualSales = 0) {
         if (!customers || customers <= 0) return [];
 
         const hadBadEvent = events.some(e =>
             e.type === 'bad_review' || e.type === 'health_scare' || e.type === 'equipment_breakdown');
+        const isEasy = this.gameState.setup.difficulty === 'easy';
+        const isBadDay = hadBadEvent || netProfit < 0;
 
+        // Easy mode keeps a cheerleader on bad days too — the simulation can
+        // still lose money, but the chat feed always has at least one "love it"
+        // voice so the experience doesn't spiral.
         let positiveCount, negativeCount;
-        if (hadBadEvent || netProfit < 0) {
-            positiveCount = 1;
-            negativeCount = 2;
+        if (isBadDay) {
+            if (isEasy) { positiveCount = 2; negativeCount = 1; }
+            else        { positiveCount = 1; negativeCount = 2; }
         } else if (context.viral || netProfit > 100) {
             positiveCount = 3;
             negativeCount = 1;
@@ -495,9 +556,22 @@ class BusinessLogic {
             negativeCount = 1;
         }
 
-        // Trim total to actual walkups, dropping negatives first on good days
-        // and positives first on bad days so the surviving bubbles still match the mood.
-        const trimNegativesFirst = !(hadBadEvent || netProfit < 0);
+        // Visitor/buyer split. Positives need a buyer to source from. On easy
+        // we let exactly one ambient positive through if nobody bought (and
+        // someone did walk by) — keeps the chat from going silent.
+        const walkers = Math.max(0, customers - actualSales);
+        const useAmbient = isEasy && actualSales === 0 && walkers > 0;
+        if (useAmbient) {
+            positiveCount = Math.min(positiveCount, 1);
+        } else {
+            positiveCount = Math.min(positiveCount, actualSales);
+        }
+        negativeCount = Math.min(negativeCount, customers);
+
+        // Trim total to actual walkups. On bad days normally drop positives
+        // first so the mood survives; on easy bad days drop negatives first so
+        // the surviving voice cheers.
+        const trimNegativesFirst = isEasy ? true : !isBadDay;
         while (positiveCount + negativeCount > customers) {
             if (trimNegativesFirst && negativeCount > 0) negativeCount--;
             else if (!trimNegativesFirst && positiveCount > 0) positiveCount--;
@@ -509,21 +583,55 @@ class BusinessLogic {
         const usedMessages = new Set();
         const usedNames = [];
 
+        // Once a few named regulars exist, let them show up in the bubble
+        // feed instead of a fresh random name every time — chance scales
+        // with how much of today's traffic is actually regulars.
+        const regularCast = this.gameState.regularCustomers || [];
+        const regularChance = regularCast.length > 0 && customers > 0
+            ? Math.min(0.6, this.gameState.regulars / customers)
+            : 0;
+
+        // Each negative bubble has a walker-share chance of being a
+        // "walked away" line ("saw the price and kept walking") instead of a
+        // regular complaint. Naturally scales: 0 walkers = 0 walkedAway,
+        // all walkers = all walkedAway.
+        const walkerOdds = customers > 0 ? walkers / customers : 0;
+
         const pushBubble = (positive) => {
-            // Pull a message that wasn't used today
+            // Bias the pick: positives use ambient when nobody bought (easy),
+            // negatives sometimes draw from walkedAway proportional to the
+            // walker share. State is passed so negatives whose hint is
+            // already addressed get filtered out.
+            let bubbleContext = context;
+            if (positive && useAmbient) {
+                bubbleContext = { ...context, ambientOnly: true };
+            } else if (!positive && walkerOdds > 0 && Math.random() < walkerOdds) {
+                bubbleContext = { ...context, walkedAway: true };
+            }
+
             let attempts = 0;
             let message;
             do {
-                message = GameData.getContextualFeedback(positive, context,
-                    bubbles[bubbles.length - 1]?.message || '');
+                message = GameData.getContextualFeedback(positive, bubbleContext,
+                    bubbles[bubbles.length - 1]?.message || '',
+                    this.gameState);
                 attempts++;
             } while (usedMessages.has(message) && attempts < 8);
             usedMessages.add(message);
 
-            const name = GameData.getRandomName(usedNames);
+            let name;
+            let isRegular = false;
+            const eligibleRegulars = regularCast.filter(r => !usedNames.includes(r.name));
+            if (eligibleRegulars.length > 0 && Math.random() < regularChance) {
+                name = eligibleRegulars[Math.floor(Math.random() * eligibleRegulars.length)].name;
+                isRegular = true;
+                this.gameState.incrementRegularVisit(name);
+            } else {
+                name = GameData.getRandomName(usedNames);
+            }
             usedNames.push(name);
 
-            bubbles.push({ name, positive, message });
+            bubbles.push({ name, positive, message, isRegular });
         };
 
         for (let i = 0; i < positiveCount; i++) pushBubble(true);
@@ -545,9 +653,9 @@ class BusinessLogic {
     }
 
     // Short narrative paragraph — the day's story in a sentence or two.
-    generateNarrative(customers, revenue, netProfit, events) {
+    generateNarrative(customers, revenue, netProfit, events, closingDay) {
         const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const dayName = weekDays[this.gameState.day % 7];
+        const dayName = weekDays[closingDay % 7];
 
         const weatherEvent = events.find(e =>
             ['sunny_day', 'rainy_day', 'cold_snap', 'heatwave'].includes(e.type));
@@ -593,7 +701,14 @@ class BusinessLogic {
         const netProfit = revenue.totalRevenue - costs.totalCosts;
 
         if (netProfit < 0) {
-            reputationChange -= 3;
+            // Easy mode softens the rep hit so a rough opening week doesn't
+            // dig a hole the player can't climb out of. -1 in the opening
+            // week (where losses are nearly guaranteed from fixed overhead),
+            // -2 after; normal/hard stay at the flat -3.
+            const isEasy = this.gameState.setup.difficulty === 'easy';
+            const inOpeningWeek = this.gameState.day <= GameData.progression.openingWeekDays;
+            if (isEasy) reputationChange -= inOpeningWeek ? 1 : 2;
+            else        reputationChange -= 3;
         } else {
             const profitMargin = revenue.totalRevenue > 0
                 ? netProfit / revenue.totalRevenue
@@ -687,6 +802,53 @@ class BusinessLogic {
         this.gameState.setRegulars(Math.min(rg, cap));
     }
 
+    // Spawns a small persistent cast of named regulars as the aggregate
+    // `regulars` counter climbs, so returning customers get faces instead
+    // of a fresh random name every day (see generateFeedbackBubbles).
+    // Never shrinks the cast even if `regulars` later drops — once a
+    // regular exists, they stay part of the story.
+    updateRegularCustomers() {
+        const cap = 6;
+        const cast = this.gameState.regularCustomers;
+        if (cast.length >= cap) return null;
+
+        const thresholds = [1, 5, 10, 15, 20, 25];
+        const nextThreshold = thresholds[cast.length];
+        if (this.gameState.regulars < nextThreshold) return null;
+
+        const name = GameData.getRandomName(cast.map(c => c.name));
+        const quirk = GameData.regularQuirks[Math.floor(Math.random() * GameData.regularQuirks.length)];
+        const entry = { name, quirk, joinedDay: this.gameState.day, visits: 0 };
+        this.gameState.addRegularCustomer(entry);
+        return entry;
+    }
+
+    // Rival truck momentum drifts toward whoever is winning the block:
+    // high prices + low reputation favor the rival (momentum rises), a
+    // competitive price + strong reputation favors the player (momentum
+    // falls). Kept to a small daily swing so it reads as a slow tide, not
+    // day-1 whiplash. See calculateDailyCustomers for the customer-count
+    // effect this feeds — that's the economy-sensitive part (CLAUDE.md
+    // balance sanity checks apply).
+    // Returns 'rivalGaining' / 'playerDominant' when momentum crosses one of
+    // the extreme thresholds this call, so GameController can drop a news
+    // entry — null on an ordinary day with no crossing.
+    updateRivalTruck() {
+        if (this.gameState.day <= GameData.progression.openingWeekDays) return null;
+
+        const before = this.gameState.rivalTruck.momentum;
+        const priceSignal = this.gameState.setup.priceMultiplier - 1.0; // -0.5..+0.5
+        const repSignal = GameData.getReputationTier(this.gameState.reputation).progressContribution; // 0..1
+        const drift = (priceSignal * 6) - (repSignal * 4) + (Math.random() * 2 - 1);
+
+        this.gameState.setRivalMomentum(before + drift);
+        const after = this.gameState.rivalTruck.momentum;
+
+        if (before < 65 && after >= 65) return 'rivalGaining';
+        if (before > 35 && after <= 35) return 'playerDominant';
+        return null;
+    }
+
     // Generate random events — low chance, high variety.
     generateRandomEvents() {
         const events = [];
@@ -748,6 +910,50 @@ class BusinessLogic {
     // Check if business can afford an expense
     canAfford(amount) {
         return this.gameState.money >= amount;
+    }
+
+    // Tick any in-progress training. Called after nextDay() — when an
+    // employee's training was started on day X and requires N days, we
+    // complete the level-up the moment gameState.day - X >= N.
+    processEmployeeTraining() {
+        this.gameState.employees.forEach((emp, idx) => {
+            if (!emp.training) return;
+            const required = GameData.employeeLeveling.trainingDays[emp.training.targetLevel];
+            const daysIn = this.gameState.day - emp.training.startDay;
+            if (daysIn >= required) {
+                this.gameState.completeEmployeeTraining(idx);
+            }
+        });
+    }
+
+    // Pay to train an employee toward the next level. Charges money up
+    // front; training advances daily and completes after the configured
+    // number of game days.
+    purchaseEmployeeTraining(employeeIndex) {
+        const emp = this.gameState.employees[employeeIndex];
+        if (!emp) return { success: false, message: 'Employee not found' };
+
+        if (emp.training) {
+            return { success: false, message: 'Already training — wait for it to finish' };
+        }
+
+        const next = GameData.canTrainEmployee(emp);
+        if (!next) {
+            return { success: false, message: 'Already at max level' };
+        }
+
+        if (!this.canAfford(next.cost)) {
+            return { success: false, message: `Not enough money. Need $${next.cost.toLocaleString()}` };
+        }
+
+        this.gameState.spendMoney(next.cost);
+        this.gameState.startEmployeeTraining(employeeIndex, next.targetLevel, this.gameState.day);
+
+        const data = GameData.getEmployeeType(emp.type);
+        return {
+            success: true,
+            message: `${data.name} now training to L${next.targetLevel} — ready in ${next.days} days`,
+        };
     }
 
     // Purchase an employee

@@ -76,14 +76,28 @@ class UIManager {
                 this.closeDayModal();
             }
             if (e.target.id === 'dayModalPrev' || e.target.closest('#dayModalPrev')) {
-                if (this.modalCurrentDay != null) this.openDayModal(this.modalCurrentDay - 1);
+                if (this.modalCurrentDay != null) {
+                    this.soundManager?.play('pageFlip');
+                    this.openDayModal(this.modalCurrentDay - 1);
+                }
             }
             if (e.target.id === 'dayModalNext' || e.target.closest('#dayModalNext')) {
-                if (this.modalCurrentDay != null) this.openDayModal(this.modalCurrentDay + 1);
+                if (this.modalCurrentDay != null) {
+                    this.soundManager?.play('pageFlip');
+                    this.openDayModal(this.modalCurrentDay + 1);
+                }
             }
             const journalEntry = e.target.closest('.journal-entry');
             if (journalEntry && journalEntry.dataset.day) {
                 this.openDayModal(parseInt(journalEntry.dataset.day, 10));
+            }
+
+            const hiChoice = e.target.closest('[data-hi-choice]');
+            if (hiChoice && this._pendingHealthInspectorChoice) {
+                const callback = this._pendingHealthInspectorChoice;
+                this._pendingHealthInspectorChoice = null;
+                this.hideHealthInspectorModal();
+                callback(hiChoice.dataset.hiChoice);
             }
         });
 
@@ -91,8 +105,14 @@ class UIManager {
             const modal = document.getElementById('dayModal');
             if (!modal || modal.classList.contains('hidden')) return;
             if (e.key === 'Escape') this.closeDayModal();
-            if (e.key === 'ArrowLeft' && this.modalCurrentDay != null) this.openDayModal(this.modalCurrentDay - 1);
-            if (e.key === 'ArrowRight' && this.modalCurrentDay != null) this.openDayModal(this.modalCurrentDay + 1);
+            if (e.key === 'ArrowLeft' && this.modalCurrentDay != null) {
+                this.soundManager?.play('pageFlip');
+                this.openDayModal(this.modalCurrentDay - 1);
+            }
+            if (e.key === 'ArrowRight' && this.modalCurrentDay != null) {
+                this.soundManager?.play('pageFlip');
+                this.openDayModal(this.modalCurrentDay + 1);
+            }
         });
     }
 
@@ -105,10 +125,14 @@ class UIManager {
                 break;
             case 'reputation':
                 this.updateReputation(data);
+                this.updateStorefrontVisual();
                 break;
             case 'day':
                 this.updateDay(data);
                 this.updateSuppliersTab();
+                // Refresh employee list so training countdowns tick down.
+                this.updateEmployeesList();
+                this.updateStorefrontVisual();
                 break;
             case 'employees':
                 this.updateEmployeesList();
@@ -124,12 +148,14 @@ class UIManager {
             case 'upgrades':
                 this.updateUpgradeButtons();
                 this.updatePricingPanel();
+                this.updateStorefrontVisual();
                 break;
             case 'business':
                 this.updateBusinessInfo();
                 this.updateBusinessProgression();
                 this.updateFinancesPanel();
                 this.updatePricingPanel();
+                this.updateStorefrontVisual();
                 break;
             case 'inventory':
                 this.updateInventoryPanel();
@@ -150,6 +176,12 @@ class UIManager {
                 break;
             case 'history':
                 this.updateJournal();
+                break;
+            case 'newsFeed':
+                this.updateNewsTicker();
+                break;
+            case 'rivalTruck':
+                this.updateStorefrontVisual();
                 break;
             case 'load':
                 this.updateAllDisplays();
@@ -183,6 +215,61 @@ class UIManager {
         }).join('');
     }
 
+    // Small "recently heard around town" feed — reputation-tier promotions
+    // and viral marketing hits. Newest first, no animation (see
+    // GameData.newsTemplates for the content, GameState.addNewsEntry for
+    // the population points).
+    updateNewsTicker() {
+        const panel = document.getElementById('newsTicker');
+        if (!panel) return;
+        const feed = this.gameState.newsFeed || [];
+        if (feed.length === 0) {
+            panel.innerHTML = '<p class="muted">No buzz yet — keep the doors open.</p>';
+            return;
+        }
+        const entries = feed.slice().reverse().slice(0, 5);
+        panel.innerHTML = entries.map(e => `
+            <div class="news-entry">
+                <span class="n-icon">${e.icon || '📰'}</span>
+                <span class="n-message">${e.message}</span>
+                <span class="n-day">Day ${e.day}</span>
+            </div>
+        `).join('');
+    }
+
+    // Blocking choice modal for the health-inspector event (see
+    // GameController.checkHealthInspectorTrigger). Renders cfg.choices
+    // dynamically so GameData.healthInspectorEvent stays the single source
+    // of truth for costs/odds. onChoice(choiceId) fires once, on click.
+    showHealthInspectorModal(cfg, onChoice) {
+        const modal = document.getElementById('healthInspectorModal');
+        const body = document.getElementById('healthInspectorBody');
+        if (!modal || !body) { onChoice('comply'); return; }
+
+        this._pendingHealthInspectorChoice = onChoice;
+        body.innerHTML = `
+            <p>${cfg.intro}</p>
+            <div class="hi-choices">
+                ${cfg.choices.map(c => `
+                    <button class="hi-choice" data-hi-choice="${c.id}">
+                        <span class="hi-choice-label">${c.label}</span>
+                        <span class="hi-choice-desc">${c.description}</span>
+                    </button>
+                `).join('')}
+            </div>
+        `;
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    hideHealthInspectorModal() {
+        const modal = document.getElementById('healthInspectorModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+    }
+
     // Open the day-recap modal for a given closing day.
     openDayModal(day) {
         const modal = document.getElementById('dayModal');
@@ -203,6 +290,8 @@ class UIManager {
         if (prev) prev.disabled = !hist.some(e => e.day === day - 1);
         if (next) next.disabled = !hist.some(e => e.day === day + 1);
 
+        this.applyWeatherTint(modal, entry);
+
         modal.classList.remove('hidden');
         modal.setAttribute('aria-hidden', 'false');
     }
@@ -213,6 +302,26 @@ class UIManager {
         modal.classList.add('hidden');
         modal.setAttribute('aria-hidden', 'true');
         this.modalCurrentDay = null;
+        this.applyWeatherTint(modal, null);
+    }
+
+    // Subtle full-card overlay matching the day's weather event, if any.
+    // Most days have no event at all (7% daily trigger) — those show no tint.
+    static WEATHER_TINT_CLASSES = {
+        sunny_day: 'weather-sunny',
+        rainy_day: 'weather-rain',
+        cold_snap: 'weather-cold',
+        heatwave: 'weather-heat',
+    };
+    applyWeatherTint(modal, entry) {
+        const card = modal.querySelector('.day-modal-card');
+        if (!card) return;
+        Object.values(UIManager.WEATHER_TINT_CLASSES).forEach(cls => card.classList.remove(cls));
+
+        const weatherEvent = entry?.events?.find(e => UIManager.WEATHER_TINT_CLASSES[e.type]);
+        if (weatherEvent) {
+            card.classList.add(UIManager.WEATHER_TINT_CLASSES[weatherEvent.type]);
+        }
     }
 
     // Render the content of a single day's recap. Used inside the modal.
@@ -234,7 +343,10 @@ class UIManager {
                     </div>
                     <div class="snapshot-tile">
                         <span class="label">Reputation</span>
-                        <span class="value">${snapshot.reputation}</span>
+                        <span class="value">${(() => {
+                            const t = GameData.getReputationTier(snapshot.reputation);
+                            return `${t.icon} ${t.name} <span class="muted">· ${snapshot.reputation}</span>`;
+                        })()}</span>
                     </div>
                     <div class="snapshot-tile">
                         <span class="label">Regulars</span>
@@ -290,12 +402,20 @@ class UIManager {
                 <div class="section">
                     <h4>Today's comments</h4>
                     ${feedback.map((b, i) => {
-                        const hint = showHints && !b.positive
-                            ? GameData.getFixHint(b.message) : null;
+                        // Defense in depth: getContextualFeedback weights
+                        // complaints down by fix-progress, but if a partially
+                        // fixed line still slips through we suppress the 💡
+                        // once progress crosses 0.7 (close enough that the
+                        // suggestion would feel like nagging).
+                        const hintInfo = showHints && !b.positive
+                            ? GameData.getFixHintInfo(b.message, this.gameState) : null;
+                        const hint = hintInfo && !hintInfo.redundant ? hintInfo.text : null;
+                        const regularInfo = b.isRegular
+                            ? this.gameState.regularCustomers.find(r => r.name === b.name) : null;
                         return `
                         <div class="feedback-bubble ${b.positive ? 'positive' : 'negative'}"
                              style="animation-delay: ${i * 120}ms;">
-                            <span class="who">${b.name}</span>
+                            <span class="who">${b.name}${regularInfo ? `<span class="regular-badge" title="${regularInfo.quirk} · visited ${regularInfo.visits}x">⭐ regular</span>` : ''}</span>
                             "${b.message}"
                             ${hint ? `<div class="fix-hint">💡 <span>${hint}</span></div>` : ''}
                         </div>
@@ -317,7 +437,14 @@ class UIManager {
         const currentRecipe = setup.recipe || [];
         // Per-food cores only — e.g. burger shows 3 cores, no meat slot on pizza.
         const coreKeys = GameData.getCoreRecipe(setup.foodType);
-        const addonKeys = Object.keys(GameData.recipeAddons);
+        // Only offer toppings tagged for this food (e.g. pepperoni/parmesan
+        // only show for pizza) — but keep showing anything already active in
+        // the recipe so an old save with a since-restricted addon can still
+        // toggle it off instead of getting stuck.
+        const addonKeys = Object.keys(GameData.recipeAddons).filter(key => {
+            const a = GameData.recipeAddons[key];
+            return !a.foods || a.foods.includes(setup.foodType) || currentRecipe.includes(key);
+        });
 
         // Per-category consumption for the *current* recipe, used for cumulative totals.
         const liveConsumption = GameData.computeRecipeConsumption(setup);
@@ -512,7 +639,8 @@ class UIManager {
     // Update money display
     updateMoney(amount) {
         if (this.elements.money) {
-            this.elements.money.textContent = `$${amount.toLocaleString()}`;
+            this.elements.money.textContent =
+                `$${Math.round(amount).toLocaleString()}`;
             
             // Add visual feedback for money changes
             this.elements.money.classList.add('money-change');
@@ -522,11 +650,19 @@ class UIManager {
         }
     }
 
-    // Update reputation display
+    // Update reputation display — tier badge + numeric value with a thin
+    // progress bar to the next tier so growth feels tangible. Tiers:
+    // Unknown → Local Spot → Buzzing → Hot Spot → Iconic.
     updateReputation(amount) {
-        if (this.elements.reputation) {
-            this.elements.reputation.textContent = amount;
-        }
+        if (!this.elements.reputation) return;
+        const tier = GameData.getReputationTier(amount);
+        const pct = Math.round(tier.progressToNext * 100);
+        const nextLabel = tier.next ? `${pct}% to ${tier.next.name}` : 'Maxed';
+        this.elements.reputation.innerHTML = `
+            <span class="rep-tier" title="${nextLabel}">${tier.icon} ${tier.name}</span>
+            <span class="rep-num">${amount}</span>
+            <span class="rep-bar"><span class="rep-bar-fill" style="width:${pct}%"></span></span>
+        `;
     }
 
     // Update day display with day-of-week so players feel the calendar.
@@ -559,33 +695,113 @@ class UIManager {
         }
     }
 
-    // Update employees list display
+    // Live storefront visual — business-type icon plus badges that react to
+    // upgrades owned, reputation tier, and the most recent day's weather event.
+    updateStorefrontVisual() {
+        const panel = document.getElementById('storefrontPanel');
+        if (!panel) return;
+
+        const businessType = this.gameState.business.type;
+        const typeIcon = businessType === 'foodTruck' ? '🚚' : businessType === 'restaurant' ? '🏢' : '🏙️';
+        const typeLabel = businessType === 'foodTruck' ? 'Food Truck' :
+                           businessType === 'restaurant' ? 'Restaurant' : 'Chain';
+
+        const badges = [];
+        if (this.gameState.upgrades.seating) badges.push({ icon: '🪑', label: 'Seating' });
+        if (this.gameState.upgrades.soundSystem) badges.push({ icon: '🎵', label: 'Sound System' });
+
+        const tier = GameData.getReputationTier(this.gameState.reputation);
+        const tierIndex = Math.max(0, GameData.reputationTiers.findIndex(t => t.name === tier.name));
+        const crowd = '🧍'.repeat(tierIndex + 1);
+
+        const hist = this.gameState.history || [];
+        const lastDay = hist[hist.length - 1];
+        const weatherEvent = lastDay?.events?.find(e => UIManager.WEATHER_TINT_CLASSES[e.type]);
+
+        const rival = this.gameState.rivalTruck;
+        const rivalStanding = rival.momentum >= 65 ? 'losing ground to'
+            : rival.momentum <= 35 ? 'ahead of'
+            : 'neck-and-neck with';
+
+        panel.innerHTML = `
+            <div class="storefront-visual">
+                <div class="storefront-icon">
+                    <span>${typeIcon}</span>
+                    ${weatherEvent ? `<span class="storefront-weather" title="${weatherEvent.message}">${weatherEvent.icon}</span>` : ''}
+                </div>
+                <div class="storefront-meta">
+                    <div class="storefront-type">${typeLabel}</div>
+                    <div class="storefront-tier" title="${tier.name} · ${this.gameState.reputation} reputation">${tier.icon} ${tier.name}</div>
+                    <div class="storefront-crowd" title="Crowd reflects reputation tier">${crowd}</div>
+                    ${badges.length > 0 ? `<div class="storefront-badges">${badges.map(b => `<span title="${b.label}">${b.icon}</span>`).join('')}</div>` : ''}
+                    <div class="storefront-rival" title="Rival momentum ${Math.round(rival.momentum)}/100">
+                        <span class="rival-label">🥊 ${rivalStanding} ${rival.name}</span>
+                        <span class="rival-bar"><span class="rival-bar-fill" style="width:${Math.round(rival.momentum)}%"></span></span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Update employees list display. Each row shows the employee's level
+    // badge, current (level-scaled) salary, training status, and actions.
     updateEmployeesList() {
         if (!this.elements.currentEmployees) return;
 
         const employees = this.gameState.employees;
-        
+
         if (employees.length === 0) {
             this.elements.currentEmployees.innerHTML = '<p>No employees hired yet</p>';
-        } else {
-            this.elements.currentEmployees.innerHTML = employees.map((emp, index) => {
-                const empData = GameData.getEmployeeType(emp.type);
-                return `
-                    <div class="employee-item">
-                        <span>${empData.name} - $${empData.salary.toLocaleString()}/month</span>
+            return;
+        }
+
+        this.elements.currentEmployees.innerHTML = employees.map((emp, index) => {
+            const empData = GameData.getEmployeeType(emp.type);
+            const level = emp.level || 1;
+            const salary = Math.round(GameData.getEmployeeSalary(emp));
+            const next = GameData.canTrainEmployee(emp);
+
+            let trainSection = '';
+            if (emp.training) {
+                const required = GameData.employeeLeveling.trainingDays[emp.training.targetLevel];
+                const daysIn = this.gameState.day - emp.training.startDay;
+                const daysLeft = Math.max(0, required - daysIn);
+                trainSection = `<span class="training-status">Training L${emp.training.targetLevel} — ${daysLeft}d left</span>`;
+            } else if (next) {
+                trainSection = `<button class="train-button arcade-button" data-index="${index}">Train L${next.targetLevel} · $${next.cost.toLocaleString()} · ${next.days}d</button>`;
+            }
+
+            return `
+                <div class="employee-item">
+                    <div class="employee-info">
+                        <span class="employee-name">${empData.name}</span>
+                        <span class="employee-level">L${level}</span>
+                        <span class="employee-salary">$${salary.toLocaleString()}/mo</span>
+                    </div>
+                    <div class="employee-actions">
+                        ${trainSection}
                         <button class="fire-button arcade-button" data-index="${index}">Fire</button>
                     </div>
-                `;
-            }).join('');
-            
-            // Add event listeners for fire buttons
-            this.elements.currentEmployees.querySelectorAll('.fire-button').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const index = parseInt(e.target.dataset.index);
-                    this.fireEmployee(index);
-                });
+                </div>
+            `;
+        }).join('');
+
+        this.elements.currentEmployees.querySelectorAll('.fire-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const index = parseInt(e.target.dataset.index);
+                this.fireEmployee(index);
             });
-        }
+        });
+
+        this.elements.currentEmployees.querySelectorAll('.train-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const index = parseInt(e.currentTarget.dataset.index);
+                if (this.businessLogic) {
+                    const result = this.businessLogic.purchaseEmployeeTraining(index);
+                    this.showNotification(result.message, result.success ? 'success' : 'error');
+                }
+            });
+        });
     }
 
     // Fire an employee
@@ -904,9 +1120,11 @@ class UIManager {
         this.updateFinancesPanel();
         this.updateSuppliersTab();
         this.updateJournal();
+        this.updateNewsTicker();
         this.updateMarketingButtons();
         this.updateUpgradeButtons();
         this.updateFollowerDisplay();
+        this.updateStorefrontVisual();
         this.updateBusinessProgression();
     }
 
@@ -948,9 +1166,9 @@ class UIManager {
         // Cost per sale — with a short breakdown.
         if (this.elements.costPerSale) {
             this.elements.costPerSale.textContent = `$${costPerSale.toFixed(2)}`;
-            const ingredientPortion = Math.max(0, costPerSale - 2);
+            const ingredientPortion = Math.max(0, costPerSale - 0.4);
             this.elements.costHint.textContent =
-                `$${ingredientPortion.toFixed(2)} ingredients + $2 packaging`;
+                `$${ingredientPortion.toFixed(2)} ingredients + $0.40 packaging`;
         }
 
         // Profit per sale — green if positive, coral if negative.
@@ -1055,6 +1273,34 @@ class UIManager {
                 this.restackNotifications();
             }, 300);
         }, 3000);
+    }
+
+    // Short full-screen burst for big milestones (reputation tiers, cash
+    // milestones, millionaire). Skips falling particles under reduced-motion,
+    // keeping just the brief flash.
+    celebrate() {
+        const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'celebrate-overlay';
+
+        let html = '<div class="celebrate-flash"></div>';
+        if (!reducedMotion) {
+            const particles = ['🎉', '✨', '⭐', '🏆', '💰'];
+            for (let i = 0; i < 16; i++) {
+                const left = Math.random() * 100;
+                const delay = (Math.random() * 0.3).toFixed(2);
+                const duration = (0.9 + Math.random() * 0.6).toFixed(2);
+                const emoji = particles[Math.floor(Math.random() * particles.length)];
+                html += `<span class="celebrate-particle" style="left:${left}%; animation-delay:${delay}s; animation-duration:${duration}s;">${emoji}</span>`;
+            }
+        }
+        overlay.innerHTML = html;
+
+        document.body.appendChild(overlay);
+        setTimeout(() => {
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        }, 1400);
     }
 
     // Stack notifications vertically so they don't overlap

@@ -17,7 +17,7 @@ class GameData {
             modifiers: {
                 customerBase: 1.2,
                 seasonalBonus: 1.3,
-                rentCost: 1800
+                rentCost: 630
             }
         },
         {
@@ -34,7 +34,7 @@ class GameData {
             modifiers: {
                 customerBase: 1.5,
                 weekendBonus: 0.7,
-                rentCost: 1300
+                rentCost: 460
             }
         },
         {
@@ -51,7 +51,7 @@ class GameData {
             modifiers: {
                 customerBase: 1.1,
                 weekdayBonus: 1.4,
-                rentCost: 2500
+                rentCost: 880
             }
         }
     ];
@@ -59,7 +59,7 @@ class GameData {
     static employeeTypes = {
         cook: {
             name: 'Cook',
-            salary: 1800,
+            salary: 600,
             benefits: {
                 customerSatisfaction: 0.12,
                 serviceSpeed: 0.15,
@@ -71,7 +71,7 @@ class GameData {
         },
         cashier: {
             name: 'Cashier',
-            salary: 1200,
+            salary: 400,
             benefits: {
                 serviceSpeed: 0.25,
                 customerCapacity: 5,
@@ -84,7 +84,7 @@ class GameData {
         // Restaurant-only employees (for future expansion)
         chef: {
             name: 'Head Chef',
-            salary: 3000,
+            salary: 1000,
             benefits: {
                 customerSatisfaction: 0.2,
                 serviceSpeed: 0.1,
@@ -97,7 +97,7 @@ class GameData {
         },
         server: {
             name: 'Server',
-            salary: 1500,
+            salary: 500,
             benefits: {
                 customerSatisfaction: 0.1,
                 customerCapacity: 8,
@@ -109,7 +109,7 @@ class GameData {
         },
         manager: {
             name: 'Manager',
-            salary: 2500,
+            salary: 900,
             benefits: {
                 overallEfficiency: 0.15,
                 employeeBonus: 0.1,
@@ -163,34 +163,37 @@ class GameData {
     };
 
     // Simple ingredients everyone understands. Orders are 10 units at a time.
+    // basePrice/10 = cost per unit consumed on a sale — kept low enough that
+    // a core-only dish (bread+meat+cheese) leaves real margin under its base
+    // menu price (see foodTypes below).
     static supplierTypes = {
         bread: {
-            name: 'Bread', icon: '🍞', basePrice: 15,
+            name: 'Bread', icon: '🍞', basePrice: 2.5,
             description: 'Buns, tortillas, pizza dough, sandwich loaves',
             isCore: true,
         },
         vegetables: {
-            name: 'Vegetables', icon: '🥬', basePrice: 12,
+            name: 'Vegetables', icon: '🥬', basePrice: 2,
             description: 'Lettuce, tomatoes, onions, fresh toppings',
             isCore: true,
         },
         meat: {
-            name: 'Meat', icon: '🥩', basePrice: 30,
+            name: 'Meat', icon: '🥩', basePrice: 5,
             description: 'Beef, chicken, pork — the protein',
             isCore: true,
         },
         cheese: {
-            name: 'Dairy', icon: '🧀', basePrice: 18,
+            name: 'Dairy', icon: '🧀', basePrice: 3,
             description: 'Cheese, butter, cream, sauce bases',
             isCore: true,
         },
         drinks: {
-            name: 'Drinks', icon: '🥤', basePrice: 8,
+            name: 'Drinks', icon: '🥤', basePrice: 1.5,
             description: 'Soda, water, juice — part of the meal deal',
             isCore: false, isMeal: true,
         },
         sides: {
-            name: 'Sides', icon: '🍟', basePrice: 10,
+            name: 'Sides', icon: '🍟', basePrice: 1.5,
             description: 'Fries, chips, rice — completes the meal',
             isCore: false, isMeal: true,
         },
@@ -199,11 +202,16 @@ class GameData {
     // Recipe addons — toggleable on the Recipe tab. Not suppliers; they consume
     // extra units of their parent category per sale.
     // e.g. adding Bacon means 2 meat per sale (1 for the base patty + 1 for bacon).
+    // `foods` restricts which food types offer the addon in the Recipe tab UI
+    // (see UIManager.updateRecipePanel) — omit it for an addon that fits every
+    // food. Consumption/pricing math doesn't care about the tag; it's purely
+    // what gets offered, so each food's topping list reads distinct.
     static recipeAddons = {
         lettuce: {
             name: 'Lettuce', icon: '🥬', parent: 'vegetables', consumption: 1,
             description: 'Crisp and fresh — +1 veg/sale',
             priceBonus: 0.5, appealBonus: 0.015,
+            foods: ['sandwiches', 'burgers', 'tacos'],
         },
         tomato: {
             name: 'Tomato', icon: '🍅', parent: 'vegetables', consumption: 1,
@@ -214,11 +222,13 @@ class GameData {
             name: 'Bacon', icon: '🥓', parent: 'meat', consumption: 1,
             description: 'Extra meat on the sandwich — +1 meat/sale',
             priceBonus: 1.5, appealBonus: 0.03,
+            foods: ['sandwiches', 'burgers', 'pizza'],
         },
         mushrooms: {
             name: 'Mushrooms', icon: '🍄', parent: 'vegetables', consumption: 1,
             description: 'Sautéed mushrooms — +1 veg/sale',
             priceBonus: 1.0, appealBonus: 0.02,
+            foods: ['burgers', 'pizza'],
         },
         onions: {
             name: 'Onions', icon: '🧅', parent: 'vegetables', consumption: 1,
@@ -229,6 +239,7 @@ class GameData {
             name: 'Pickles', icon: '🥒', parent: 'vegetables', consumption: 1,
             description: 'Tangy crunch — +1 veg/sale',
             priceBonus: 0.5, appealBonus: 0.01,
+            foods: ['sandwiches', 'burgers'],
         },
         sauce: {
             name: 'Signature Sauce', icon: '🫙', parent: 'cheese', consumption: 1,
@@ -239,6 +250,59 @@ class GameData {
             name: 'Jalapeños', icon: '🌶️', parent: 'vegetables', consumption: 1,
             description: 'Spicy kick — +1 veg/sale',
             priceBonus: 0.75, appealBonus: 0.015,
+            foods: ['sandwiches', 'burgers', 'tacos'],
+        },
+        // --- Pizza-specific ---------------------------------------------
+        parmesan: {
+            name: 'Parmesan', icon: '🧂', parent: 'cheese', consumption: 1,
+            description: 'Shredded finishing cheese — +1 dairy/sale',
+            priceBonus: 0.75, appealBonus: 0.02,
+            foods: ['pizza'],
+        },
+        spicyPeppers: {
+            name: 'Spicy Peppers', icon: '🫑', parent: 'vegetables', consumption: 1,
+            description: 'Pepperoncini rings for heat — +1 veg/sale',
+            priceBonus: 0.5, appealBonus: 0.02,
+            foods: ['pizza'],
+        },
+        basil: {
+            name: 'Fresh Basil', icon: '🌿', parent: 'vegetables', consumption: 1,
+            description: 'Torn basil leaves — +1 veg/sale',
+            priceBonus: 0.5, appealBonus: 0.02,
+            foods: ['pizza'],
+        },
+        pepperoni: {
+            name: 'Pepperoni', icon: '🍖', parent: 'meat', consumption: 1,
+            description: "Pizza's only meat option, cupped and crisped — +1 meat/sale",
+            priceBonus: 1.25, appealBonus: 0.03,
+            foods: ['pizza'],
+        },
+        // --- Taco-specific ------------------------------------------------
+        sourCream: {
+            name: 'Sour Cream', icon: '🥛', parent: 'cheese', consumption: 1,
+            description: 'Cool dairy dollop — +1 dairy/sale',
+            priceBonus: 0.5, appealBonus: 0.02,
+            foods: ['tacos'],
+        },
+        cilantro: {
+            name: 'Cilantro', icon: '🌱', parent: 'vegetables', consumption: 1,
+            description: 'Fresh chopped cilantro — +1 veg/sale',
+            priceBonus: 0.5, appealBonus: 0.02,
+            foods: ['tacos'],
+        },
+        // --- Shared specialty ----------------------------------------------
+        avocado: {
+            name: 'Avocado', icon: '🥑', parent: 'vegetables', consumption: 1,
+            description: 'Creamy sliced avocado — +1 veg/sale',
+            priceBonus: 1.0, appealBonus: 0.025,
+            foods: ['sandwiches', 'burgers', 'tacos'],
+        },
+        // --- Burger-specific -------------------------------------------
+        friedEgg: {
+            name: 'Fried Egg', icon: '🍳', parent: 'meat', consumption: 1,
+            description: 'Over-easy, breaks over the patty — +1 meat/sale',
+            priceBonus: 1.25, appealBonus: 0.025,
+            foods: ['burgers'],
         },
     };
 
@@ -349,7 +413,7 @@ class GameData {
             name: 'Easy',
             startingMoney: 7000,
             costMultiplier: 0.85,
-            customerMultiplier: 1.15,
+            customerMultiplier: 1.30,
             description: 'Real food truck start with some cushion'
         },
         normal: {
@@ -366,6 +430,204 @@ class GameData {
             customerMultiplier: 0.85,
             description: 'Living lean — one bad week and you fold'
         }
+    };
+
+    // Employee leveling — pay-to-train system. Each employee starts at L1
+    // and can be trained up to L3 for measurable speed/conversion gains plus
+    // proportional reduction in the complaints they fix. Salary scales with
+    // level (you're paying for the trained version), training is paid up
+    // front and takes real game days.
+    static employeeLeveling = {
+        maxLevel: 3,
+        // Cost to train UP TO this level (e.g. 2 = cost to go L1→L2).
+        trainingCost: { 2: 1500, 3: 3500 },
+        // Game days to complete training to this level.
+        trainingDays: { 2: 7, 3: 14 },
+        // Salary multiplier applied to base employeeTypes[type].salary at
+        // each level. Higher trained = costlier on the books.
+        salaryMultiplier: { 1: 1.0, 2: 1.4, 3: 1.9 },
+        // Multiplier on every benefit number (conversion bumps, customer
+        // capacity, tip income, etc.). Keeps the existing math centralized.
+        benefitMultiplier: { 1: 1.0, 2: 1.5, 3: 2.0 },
+    };
+
+    static getEmployeeSalary(emp) {
+        const data = this.getEmployeeType(emp.type);
+        if (!data) return 0;
+        const lvl = emp.level || 1;
+        const mult = this.employeeLeveling.salaryMultiplier[lvl] || 1.0;
+        return data.salary * mult;
+    }
+
+    static getEmployeeBenefitMultiplier(emp) {
+        const lvl = emp?.level || 1;
+        return this.employeeLeveling.benefitMultiplier[lvl] || 1.0;
+    }
+
+    static canTrainEmployee(emp) {
+        if (!emp || emp.training) return null;
+        const next = (emp.level || 1) + 1;
+        if (next > this.employeeLeveling.maxLevel) return null;
+        return {
+            targetLevel: next,
+            cost: this.employeeLeveling.trainingCost[next],
+            days: this.employeeLeveling.trainingDays[next],
+        };
+    }
+
+    // Reputation tiers — names + thresholds layered on top of the existing
+    // numeric `gameState.reputation`. Math elsewhere (customer count,
+    // conversion bonus) stays the number; tiers are for player-facing
+    // surfacing AND as a fix-progress lever for the "this place is dead"
+    // marketing complaints (see fixHints "slow" rule).
+    static reputationTiers = [
+        { name: 'Unknown',     min: 0,   icon: '👤', progressContribution: 0   },
+        { name: 'Local Spot',  min: 25,  icon: '📍', progressContribution: 0.3 },
+        { name: 'Buzzing',     min: 75,  icon: '🔥', progressContribution: 0.6 },
+        { name: 'Hot Spot',    min: 200, icon: '⭐', progressContribution: 0.9 },
+        { name: 'Iconic',      min: 500, icon: '🏆', progressContribution: 1.0 },
+    ];
+
+    // Returns { name, icon, min, next, progressContribution, progressToNext }.
+    // `progressToNext` is 0..1 toward the next tier (1.0 = at/past max).
+    static getReputationTier(rep = 0) {
+        const tiers = this.reputationTiers;
+        let current = tiers[0];
+        let next = null;
+        for (let i = 0; i < tiers.length; i++) {
+            if (rep >= tiers[i].min) {
+                current = tiers[i];
+                next = tiers[i + 1] || null;
+            }
+        }
+        const progressToNext = next
+            ? Math.min(1, (rep - current.min) / (next.min - current.min))
+            : 1.0;
+        return {
+            name: current.name,
+            icon: current.icon,
+            min: current.min,
+            next,
+            progressContribution: current.progressContribution,
+            progressToNext,
+        };
+    }
+
+    static _reputationProgress(s) {
+        return this.getReputationTier(s.reputation || 0).progressContribution;
+    }
+
+    // Flavor lines for the in-game news/buzz ticker (`GameState.newsFeed`).
+    // Populated by GameController when a rep-tier achievement unlocks or a
+    // marketing viral hit lands — see GameController.checkAchievements /
+    // processNextDay. One line is picked at random per trigger.
+    static newsTemplates = {
+        tierUp: {
+            'Local Spot': [
+                "Word's getting around the neighborhood about {name}.",
+                "A few regulars have started calling {name} 'their spot.'",
+                "{name} just got mentioned in a local group chat.",
+            ],
+            'Buzzing': [
+                "{name} is the talk of the block this week.",
+                "Lines are forming earlier just to beat the rush at {name}.",
+                "Someone left a glowing review of {name} on their way out.",
+            ],
+            'Hot Spot': [
+                "{name} is officially the place to eat around here.",
+                "A local food blogger name-dropped {name} this week.",
+                "People are driving out of their way for {name}.",
+            ],
+            'Iconic': [
+                "{name} has become a neighborhood institution.",
+                "Ask anyone nearby about food and they'll bring up {name}.",
+                "{name}'s reputation has outgrown the block it started on.",
+            ],
+        },
+        viral: [
+            "A post about {name} is spreading fast online.",
+            "{name} just had a moment — the phones haven't stopped since.",
+            "Someone's video of {name} is racking up shares.",
+        ],
+        rivalGaining: [
+            "The truck down the street is pulling ahead of {name} this week.",
+            "Regulars have been drifting toward the competition lately.",
+            "The rival's out-hustling {name} right now.",
+        ],
+        playerDominant: [
+            "{name} has clearly overtaken the local competition.",
+            "Word is the other truck can't keep up with {name} anymore.",
+            "{name} is the one people talk about now — not the rival.",
+        ],
+    };
+
+    // Short quirk lines for named recurring regulars (see
+    // BusinessLogic.updateRegularCustomers / generateFeedbackBubbles).
+    static regularQuirks = [
+        "always orders the same thing",
+        "tips well on paydays",
+        "brings a different friend every time",
+        "asks how business is going",
+        "shows up right when you open",
+        "knows the whole menu by heart",
+        "always in a hurry but never skips a visit",
+        "chats for a minute before ordering",
+    ];
+
+    static getNewsLine(pool, businessName) {
+        if (!pool || pool.length === 0) return '';
+        const line = pool[Math.floor(Math.random() * pool.length)];
+        return line.replace('{name}', businessName || 'the place');
+    }
+
+    // Health inspector — a real branching choice rather than a flat stat
+    // roll. Triggered as a pre-day gate in GameController.checkHealthInspectorTrigger
+    // (before BusinessLogic.processDailyBusiness runs), not part of eventCatalog,
+    // since eventCatalog effects resolve inline with no room for player input.
+    // Rival truck — a competing business whose `momentum` (0-100, 50 =
+    // neutral) tugs against the player's daily customer count. See
+    // BusinessLogic.updateRivalTruck / calculateDailyCustomers.
+    static rivalNames = [
+        "Riverside Grill Co.", "The Corner Cart", "Taco Bandits",
+        "Uptown Eats", "Grease Monkey Grub", "Second Street Kitchen",
+        "The Hungry Fox", "Roadside Provisions",
+    ];
+
+    static getRandomRivalName() {
+        return this.rivalNames[Math.floor(Math.random() * this.rivalNames.length)];
+    }
+
+    static healthInspectorEvent = {
+        triggerChance: 0.02,
+        minDay: 10,
+        cooldownDays: 20,
+        icon: '🕵️',
+        intro: "A health inspector showed up for a walkthrough today.",
+        choices: [
+            {
+                id: 'comply',
+                label: 'Comply — fix it up',
+                description: 'Pay to fix any issues on the spot. No reputation risk.',
+                costByType: { foodTruck: 150, restaurant: 250, chain: 400 },
+            },
+            {
+                id: 'bribe',
+                label: 'Slip them something',
+                description: 'Cheaper, but risky if it doesn\'t land well.',
+                costByType: { foodTruck: 60, restaurant: 100, chain: 150 },
+                catchChance: 0.2,
+                caughtRepPenalty: -15,
+                caughtCostByType: { foodTruck: 300, restaurant: 500, chain: 800 },
+            },
+            {
+                id: 'dispute',
+                label: 'Dispute the findings',
+                description: 'No cost, but the outcome is a coin flip.',
+                successChance: 0.4,
+                successRep: 5,
+                failRep: -12,
+            },
+        ],
     };
 
     // Win and progression thresholds — tuned for grounded play.
@@ -389,22 +651,22 @@ class GameData {
     // Broken down so the player can see exactly where money goes.
     static fixedCosts = {
         foodTruck: {
-            vehiclePayment:  450,   // monthly truck lease
-            businessLicense: 150,
-            foodPermit:      50,
-            insurance:       200,
+            vehiclePayment:  160,   // monthly truck lease
+            businessLicense: 55,
+            foodPermit:      20,
+            insurance:       70,
         },
         restaurant: {
             vehiclePayment:  0,     // sold the truck
-            businessLicense: 300,
-            foodPermit:      100,
-            insurance:       400,
+            businessLicense: 105,
+            foodPermit:      35,
+            insurance:       140,
         },
         chain: {
             vehiclePayment:  0,
-            businessLicense: 600,
-            foodPermit:      200,
-            insurance:       800,
+            businessLicense: 210,
+            foodPermit:      70,
+            insurance:       280,
         },
     };
 
@@ -563,6 +825,23 @@ class GameData {
             "So much flavor packed in!",
             "Worth every extra topping you piled on.",
         ],
+        // Passers-by who didn't buy but had something nice to say. Used as
+        // an easy-mode fallback when actualSales = 0 so the chat still has
+        // a friendly voice. These all read fine from someone who didn't eat.
+        ambient: [
+            "Smelled incredible walking by!",
+            "I'll be back when I have more time.",
+            "Adding this to my list for next visit.",
+            "Looks great — saving up to come try it.",
+            "Took a photo of the menu. Definitely returning.",
+        ],
+        // Fires when the rival truck's momentum has swung well in the
+        // player's favor (see BusinessLogic.updateRivalTruck / feedbackContext).
+        rivalWin: [
+            "Heard you're the better option now compared to the other truck.",
+            "A friend said to skip the other place and come here instead.",
+            "You've clearly won this block over.",
+        ],
     };
 
     static negativeFeedback = {
@@ -639,6 +918,116 @@ class GameData {
             "Overloaded.",
             "Felt like you threw everything on there.",
         ],
+        // Vague non-actionable mild dislikes. People sometimes just don't
+        // click with a place — no specific lever the player could pull. These
+        // intentionally don't match any fixHints rule, so no 💡 hint shows.
+        // Reminder for future authors: not every complaint needs to point at
+        // an upgrade. "Just didn't like it" is a real reaction.
+        vague: [
+            "Eh, it was fine.",
+            "Didn't really click for me.",
+            "Not for me, but I see the appeal.",
+            "Just OK, I guess.",
+            "Wasn't really my thing.",
+            "It was alright. Nothing to write home about.",
+            "Fine, I suppose.",
+        ],
+        // People who walked up but didn't buy. Fires when customers > actualSales
+        // (foot traffic showed up but the conversion didn't land). Each line
+        // points at a *reason* for walking away, so it threads through the
+        // same fix-hint redundancy logic — fix the underlying problem and the
+        // walk-away complaint retires.
+        walkedAway: [
+            "Saw the price and kept walking.",
+            "Line was longer than I had time for.",
+            "Couldn't see anything I wanted on the menu.",
+            "Was in a rush, you guys looked busy.",
+            "Pricey for a quick bite — passed.",
+            "Wanted something more filling — kept looking.",
+        ],
+        // Fires when the rival truck's momentum has swung well in their
+        // favor (see BusinessLogic.updateRivalTruck / feedbackContext).
+        rival: [
+            "Tried the place down the street this time — heard good things.",
+            "Almost went to the other truck instead — they're getting popular.",
+            "Your competition's been the talk of the block lately.",
+        ],
+    };
+
+    // Per-addon reaction lines — fire only when that specific topping is in
+    // the player's active recipe (see getContextualFeedback). This is what
+    // makes each food's build feel distinct: a pizza loaded with pepperoni
+    // and parmesan draws different chatter than one with basil, and tacos
+    // with cilantro + sour cream read nothing like a plain taco.
+    static addonFeedback = {
+        lettuce: {
+            positive: ["Nice and crisp lettuce, good crunch.", "Loved the fresh lettuce on there."],
+            negative: ["Lettuce was a little wilted."],
+        },
+        tomato: {
+            positive: ["That tomato slice was perfectly ripe.", "Fresh tomato really brightened it up."],
+            negative: ["Tomato tasted a bit mealy."],
+        },
+        bacon: {
+            positive: ["That bacon was crispy perfection!", "Extra bacon was the right call.", "Smoky bacon really made this."],
+            negative: ["Bacon was a little limp, could be crispier."],
+        },
+        mushrooms: {
+            positive: ["Those sautéed mushrooms were incredible.", "Earthy mushroom flavor really came through."],
+            negative: ["Mushrooms tasted a bit rubbery."],
+        },
+        onions: {
+            positive: ["Those caramelized onions were sweet perfection.", "Onions added just the right bite."],
+            negative: ["Onions were a bit overpowering."],
+        },
+        pickles: {
+            positive: ["That pickle crunch was so satisfying.", "Tangy pickles balanced it out perfectly."],
+            negative: ["Pickles were a little too sour for me."],
+        },
+        sauce: {
+            positive: ["That signature sauce is unreal, what's the recipe?", "The house sauce made the whole thing."],
+            negative: ["Went a little heavy on the sauce."],
+        },
+        jalapenos: {
+            positive: ["That jalapeño kick was perfect!", "Loved the heat from the jalapeños."],
+            negative: ["Jalapeños were way too spicy for me."],
+        },
+        // Pizza-specific
+        parmesan: {
+            positive: ["That parmesan finish took it over the top!", "Real shredded parm — could tell immediately."],
+            negative: ["Could've used more parmesan on top.", "Barely noticed the parmesan."],
+        },
+        spicyPeppers: {
+            positive: ["Those pepperoncini rings brought the perfect heat!", "Spicy peppers made every bite interesting."],
+            negative: ["Peppers were a bit too spicy for a slice."],
+        },
+        basil: {
+            positive: ["Fresh basil made it taste like a real pizzeria.", "That basil aroma when you handed it over — amazing."],
+            negative: ["Basil looked a little wilted on top."],
+        },
+        pepperoni: {
+            positive: ["Crispy pepperoni cups, exactly how I like it!", "Finally, a pizza place with real pepperoni."],
+            negative: ["Pepperoni was a little greasy."],
+        },
+        // Taco-specific
+        sourCream: {
+            positive: ["That cool sour cream balanced the spice perfectly.", "Loved the dollop of sour cream on top."],
+            negative: ["Went too heavy on the sour cream."],
+        },
+        cilantro: {
+            positive: ["Fresh cilantro made it taste authentic.", "That cilantro finish was perfect."],
+            negative: ["Not a cilantro person, honestly — tasted soapy to me."],
+        },
+        // Shared specialty
+        avocado: {
+            positive: ["That avocado was perfectly ripe and creamy!", "Avocado took this to another level."],
+            negative: ["Avocado was a little underripe."],
+        },
+        // Burger-specific
+        friedEgg: {
+            positive: ["That runny egg yolk over the patty — chef's kiss.", "Fried egg on a burger is genius, more places should do this."],
+            negative: ["Egg was cooked past over-easy, wanted it runnier."],
+        },
     };
 
     // First-name pool for on-the-fly customer names.
@@ -675,6 +1064,23 @@ class GameData {
         "End of Day {day} Sheet",
         "Day {day} Scoreboard",
     ];
+
+    // Flavor lines shown under the resume-game snapshot — one picked at random
+    // each time the modal opens. Grounded/gritty, not chipper "welcome back!" copy.
+    static resumeFlavor = [
+        "Rent's still due. The regulars kept coming.",
+        "The truck's cold, but the regulars still remember your order.",
+        "Nobody's manned the window since you left. Time to get back to it.",
+        "The books didn't close themselves.",
+        "Somewhere out there, a regular is wondering where you went.",
+        "The grease trap isn't going to clean itself.",
+        "Business doesn't pause just because you did.",
+        "Bills came due whether you were here or not.",
+    ];
+
+    static getResumeFlavor() {
+        return this.resumeFlavor[Math.floor(Math.random() * this.resumeFlavor.length)];
+    }
 
     // Event definitions — type keys map to eventMessages below.
     // Weight controls how often each fires relative to others.
@@ -888,7 +1294,33 @@ class GameData {
             name: "Millionaire",
             description: "Reach $1,000,000 in total earnings",
             reward: 10000
-        }
+        },
+        // Reputation tier achievements — flavor rewards that confirm
+        // milestones the player can already feel from the tier badge.
+        repLocalSpot: {
+            name: "Local Spot",
+            description: "Earn a reputation people start to recognize",
+            reward: 500,
+            reputationThreshold: 25,
+        },
+        repBuzzing: {
+            name: "Buzzing",
+            description: "Reach Buzzing — the line forms itself now",
+            reward: 1500,
+            reputationThreshold: 75,
+        },
+        repHotSpot: {
+            name: "Hot Spot",
+            description: "Become the place to eat in this part of town",
+            reward: 4000,
+            reputationThreshold: 200,
+        },
+        repIconic: {
+            name: "Iconic",
+            description: "Reach Iconic status — you are the brand",
+            reward: 10000,
+            reputationThreshold: 500,
+        },
     };
 
     // Utility methods
@@ -904,38 +1336,131 @@ class GameData {
         return this.upgradeTypes[type] || null;
     }
 
+    // Contextual guards — patterns that imply a specific day shape
+    // (a line, an empty room, a returning regular). When the day's state
+    // doesn't match, the line is dropped from the candidate pool. Falls back
+    // to the unguarded pool if every candidate would be filtered, so we never
+    // end up with nothing to surface. Add new guards here as they're noticed.
+    static messageGuards = [
+        // Crowd / line / "rush hour" / "20 minutes" — only fits on busy days
+        // or when there's enough traffic for a line to plausibly form.
+        // Without this, a 1-walkup day surfaces "Line was longer than I had
+        // time for," which reads broken.
+        {
+            match: /\bline\b|\bcrowd(?:ed)?\b|\bpacked\b|\bconveyor\b|\brush hour\b|\baround the block\b|\b\d+ minutes\b|\bstaffed for\b|\blooked busy\b/i,
+            requires: ctx => ctx.busy === true || (ctx.customers || 0) >= 6,
+        },
+        // Empty-room implications — "nobody was here", "dead atmosphere".
+        // Filter out when there's actually a crowd on (defense in depth on
+        // top of the bucket-level slow gate).
+        {
+            match: /\bnobody\b|\bdead\b|\bstill open\b|\bquestion ordering\b|\bmarket more\b/i,
+            requires: ctx => ctx.slow === true || (ctx.customers || 0) < 10,
+        },
+        // "Last time" / "remembered my order" — implies prior visits the
+        // player hasn't earned yet. Hold these back until past opening week.
+        {
+            match: /\blast time\b|\bremembered my\b/i,
+            requires: ctx => (ctx.day || 1) >= 5,
+        },
+    ];
+
+    static passesGuards(message, context = {}) {
+        const m = message.toLowerCase();
+        for (const guard of this.messageGuards) {
+            if (guard.match.test(m) && !guard.requires(context)) return false;
+        }
+        return true;
+    }
+
     // Build a candidate pool from 'general' + context-specific buckets,
-    // then pick one that isn't the last-shown message (if possible).
-    static getContextualFeedback(positive, context = {}, lastShown = '') {
+    // then pick one weighted by (1 - fixProgress). When `state` is provided,
+    // negative messages whose suggested fix is already in progress get a
+    // proportionally lower selection weight — fully-addressed complaints
+    // effectively retire (small floor still lets a tragic edge case slip
+    // through). Special context flags override the bucket set:
+    //   - context.ambientOnly  → positive bucket = ambient (used for easy-mode
+    //     zero-sales days where only walkers are present).
+    //   - context.walkedAway   → negative pool is walkedAway only (drawn from
+    //     when the bubble represents a non-buyer's exit comment).
+    static getContextualFeedback(positive, context = {}, lastShown = '', state = null) {
         const pools = positive ? this.positiveFeedback : this.negativeFeedback;
-        const buckets = ['general'];
+        let buckets = ['general'];
 
         if (positive) {
-            if (context.viral) buckets.push('viral');
-            if (context.busy) buckets.push('busy');
-            // Can't please everyone — simple recipes draw both love and "too plain" takes.
-            if (context.simple) buckets.push('simpleLovers', 'simpleLovers');
-            if (context.loaded) buckets.push('loadedLovers', 'loadedLovers');
+            if (context.ambientOnly) {
+                buckets = ['ambient'];
+            } else {
+                if (context.viral) buckets.push('viral');
+                if (context.busy) buckets.push('busy');
+                // Can't please everyone — simple recipes draw both love and "too plain" takes.
+                if (context.simple) buckets.push('simpleLovers', 'simpleLovers');
+                if (context.loaded) buckets.push('loadedLovers', 'loadedLovers');
+                if (context.rivalDominant) buckets.push('rivalWin');
+            }
         } else {
-            if (context.supplyShortage) buckets.push('supplyShortage');
-            if (context.busy) buckets.push('busy');
-            if (context.slow) buckets.push('slow');
-            if (context.simple) buckets.push('simpleDetractors', 'simpleDetractors');
-            if (context.loaded) buckets.push('loadedDetractors', 'loadedDetractors');
+            if (context.walkedAway) {
+                buckets = ['walkedAway'];
+            } else {
+                // Vague non-actionable mild dislikes always live alongside
+                // general — sometimes people just don't click with a place
+                // and there's no specific lever to point at.
+                buckets.push('vague');
+                if (context.supplyShortage) buckets.push('supplyShortage');
+                if (context.busy) buckets.push('busy');
+                if (context.slow) buckets.push('slow');
+                if (context.simple) buckets.push('simpleDetractors', 'simpleDetractors');
+                if (context.loaded) buckets.push('loadedDetractors', 'loadedDetractors');
+                if (context.rivalPressure) buckets.push('rival');
+            }
         }
 
-        if (context.customerType && pools[context.customerType]) {
-            buckets.push(context.customerType);
-        }
-        if (context.foodType && pools[context.foodType]) {
-            buckets.push(context.foodType);
+        if (!context.ambientOnly && !context.walkedAway) {
+            if (context.customerType && pools[context.customerType]) {
+                buckets.push(context.customerType);
+            }
+            if (context.foodType && pools[context.foodType]) {
+                buckets.push(context.foodType);
+            }
         }
 
-        const candidates = buckets.flatMap(b => pools[b] || []);
+        let candidates = buckets.flatMap(b => pools[b] || []);
+
+        // Addon-specific reactions — only fire for toppings actually in the
+        // player's active recipe, so a pepperoni-and-parmesan pizza draws
+        // different chatter than a basil-only one. Skipped for ambient/
+        // walked-away context since those voices never tasted the food.
+        if (!context.ambientOnly && !context.walkedAway && state) {
+            const recipe = state.setup?.recipe || [];
+            recipe.forEach(key => {
+                const af = this.addonFeedback[key];
+                const lines = af && af[positive ? 'positive' : 'negative'];
+                if (lines && lines.length) candidates = candidates.concat(lines);
+            });
+        }
+
         const filtered = candidates.filter(m => m !== lastShown);
-        const finalPool = filtered.length > 0 ? filtered : candidates;
+        let finalPool = filtered.length > 0 ? filtered : candidates;
+        // Drop lines that don't fit the day's shape (a line at 1 customer,
+        // "nobody was here" on a packed day, etc.). Fall back to unguarded
+        // pool if everything would be filtered.
+        const guarded = finalPool.filter(m => this.passesGuards(m, context));
+        if (guarded.length > 0) finalPool = guarded;
+        if (finalPool.length === 0) return '';
 
-        return finalPool[Math.floor(Math.random() * finalPool.length)];
+        // Positive selection is uniform; negatives are weighted by (1 - progress).
+        if (positive || !state) {
+            return finalPool[Math.floor(Math.random() * finalPool.length)];
+        }
+
+        const weights = finalPool.map(m => Math.max(0.05, 1 - this.computeFixProgress(m, state)));
+        const total = weights.reduce((a, b) => a + b, 0);
+        let roll = Math.random() * total;
+        for (let i = 0; i < finalPool.length; i++) {
+            roll -= weights[i];
+            if (roll <= 0) return finalPool[i];
+        }
+        return finalPool[finalPool.length - 1];
     }
 
     // Legacy signature — kept for anything still calling it flat.
@@ -958,37 +1483,247 @@ class GameData {
         return pool[Math.floor(Math.random() * pool.length)];
     }
 
+    // Parallel-stack progress: combine independent partial fixes.
+    // Two levers each at 0.5 stack to 0.75 (1 - 0.5*0.5), not 1.0.
+    static stackProgress(...progresses) {
+        return 1 - progresses.reduce((acc, p) => acc * (1 - (p || 0)), 1);
+    }
+
+    // --- Lever progress helpers ----------------------------------------------
+    // Each returns 0..1 indicating how far along that lever is.
+    // Cook / cashier helpers now read employee.level — a trained L3 cook
+    // contributes nearly twice the wait-time fix progress of a fresh L1 hire.
+    static _cookProgress(s) {
+        const cooks = (s.employees || []).filter(e => e.type === 'cook');
+        if (cooks.length === 0) return 0;
+        // Per-cook contribution: 0.4 base × level multiplier.
+        // L1 = 0.40, L2 = 0.60, L3 = 0.80. Stack across cooks via parallel.
+        return GameData.stackProgress(...cooks.map(c =>
+            0.4 * GameData.getEmployeeBenefitMultiplier(c)));
+    }
+
+    static _cashierProgress(s) {
+        const cashiers = (s.employees || []).filter(e => e.type === 'cashier');
+        if (cashiers.length === 0) return 0;
+        // L1 = 0.6, L2 = 0.9, L3 = 1.2 (capped at 1.0 by the helper consumer).
+        const best = Math.max(...cashiers.map(c =>
+            0.6 * GameData.getEmployeeBenefitMultiplier(c)));
+        return Math.min(1.0, best);
+    }
+
+    static _employeeCountProgress(s) {
+        const employees = s.employees || [];
+        if (employees.length === 0) return 0;
+        // Stack each employee's training-weighted contribution. A team of
+        // three L1s and a team with one L3 read about the same — hire OR
+        // train.
+        return GameData.stackProgress(...employees.map(e =>
+            0.3 * GameData.getEmployeeBenefitMultiplier(e)));
+    }
+
+    static _marketingProgress(s) {
+        const m = s.marketing || {};
+        return GameData.stackProgress(
+            m.hasCameraSetup     ? 0.3 : 0,
+            m.hasSocialMediaAds  ? 0.4 : 0,
+            m.hasInfluencerCollab ? 0.3 : 0,
+        );
+    }
+
+    static _premiumProgress(s, key) {
+        const tiers = s.setup?.supplierTiers || {};
+        return tiers[key] === 'premium' ? 0.8 : 0;
+    }
+
+    static _anyPremiumProgress(s) {
+        const tiers = s.setup?.supplierTiers || {};
+        return Math.max(0, ...['bread','vegetables','meat','cheese']
+            .map(k => tiers[k] === 'premium' ? 0.6 : 0));
+    }
+
+    static _vegAddonProgress(s) {
+        const recipe = s.setup?.recipe || [];
+        const veg = ['lettuce','tomato','mushrooms','onions','pickles','jalapenos',
+            'spicyPeppers','basil','cilantro','avocado'];
+        const count = recipe.filter(k => veg.includes(k)).length;
+        if (count === 0) return 0;
+        if (count === 1) return 0.5;
+        return 1.0;
+    }
+
+    static _anyAddonProgress(s, perAddon = 0.4) {
+        const recipe = s.setup?.recipe || [];
+        const count = recipe.filter(k => GameData.recipeAddons[k]).length;
+        return Math.min(1, count * perAddon);
+    }
+
     // Map a negative-feedback string to an actionable hint that points at an
-    // existing game lever. Returns null if the comment is pure flavor.
-    // The lookup is keyword-based so string-only feedback data stays simple.
-    static getFixHint(message) {
+    // existing game lever. Lookup is keyword-based so string-only feedback
+    // data stays simple. `fixProgress(state)` returns 0..1 — the share of the
+    // suggested fix the player has already done. Selection is weighted by
+    // (1 - progress), so partially-fixed complaints appear less often, and
+    // fully-fixed ones effectively retire (small floor lets occasional gripes
+    // still slip through — even great trucks get the rare bad take).
+    static fixHints = [
+        // Slow service, wait time, rushed feel, busy-day staffing complaints.
+        // Cook + kitchen equipment are the main levers; cashier helps throughput.
+        {
+            match: /\bwait\b|\bslow\b|\bslower\b|\bfaster\b|\brushed\b|\blunch window\b|\bcrowd\b|\bline\b|\bstaff\b|\bconveyor\b|\b30 minutes\b|\b20 minutes\b/,
+            text: 'Hire a Cook or buy Better Kitchen Equipment',
+            fixProgress: s => GameData.stackProgress(
+                GameData._cookProgress(s),
+                s.upgrades?.kitchenEquipment ? 0.4 : 0,
+                GameData._cashierProgress(s) * 0.4,
+            ),
+        },
+        // Seating
+        {
+            match: /\bseat(?:ing)?\b/,
+            text: 'Upgrade Seating on the Upgrades tab',
+            fixProgress: s => s.upgrades?.seating ? 1.0 : 0,
+        },
+        // Music / atmosphere / dead room
+        {
+            match: /\bmusic\b|\batmosphere\b|\bambiance\b|\bambience\b/,
+            text: 'Install a Sound System',
+            fixProgress: s => s.upgrades?.soundSystem ? 1.0 : 0,
+        },
+        // "Place is dead" / "market more" — slow-bucket marketing complaints.
+        // Reputation tier and marketing options stack: an Iconic-rep truck
+        // can't credibly be "dead" even with no marketing spend, and a
+        // fully-marketed Unknown truck still gets the complaint until it
+        // earns reputation.
+        {
+            match: /\bnobody\b|\bstill open\b|\bmarket more\b|\bdead\b|\bquestion ordering\b/,
+            text: 'Try social media — Camera Setup or Social Media Ads',
+            fixProgress: s => GameData.stackProgress(
+                GameData._marketingProgress(s),
+                GameData._reputationProgress(s),
+            ),
+        },
+        // Bread-specific quality complaints — pizza crust, sandwich bread, bun.
+        {
+            match: /\bbread\b|\bcrust\b|\bbun\b|\bsoggy\b|\btortilla\b|\bdough\b/,
+            text: 'Try Premium Bread on the Suppliers tab',
+            fixProgress: s => GameData._premiumProgress(s, 'bread'),
+        },
+        // Cheese / dairy / sauce complaints
+        {
+            match: /\bcheese\b|\bmelted\b|\bmayo\b|\bdairy\b/,
+            text: 'Try Premium Dairy on the Suppliers tab',
+            fixProgress: s => GameData._premiumProgress(s, 'cheese'),
+        },
+        // Produce / vegetable freshness
+        {
+            match: /\bproduce\b|\bvegetable\b|\bsad\b/,
+            text: 'Try Premium Vegetables on the Suppliers tab',
+            fixProgress: s => GameData._premiumProgress(s, 'vegetables'),
+        },
+        // Generic freshness — any premium helps a bit.
+        {
+            match: /\bstale\b|\bfresh\b|\bfrozen\b|\boff\b/,
+            text: 'Try Premium suppliers once you have the trust',
+            fixProgress: s => GameData._anyPremiumProgress(s),
+        },
+        // Out of stock — no clear progress signal beyond "buy more". Hint
+        // always shows; selection isn't weighted down (player needs the nudge).
+        {
+            match: /\bran out\b|\bout of\b|\bempty\b/,
+            text: 'Stock more inventory on the Suppliers tab',
+            fixProgress: s => 0,
+        },
+        // Seasoning / bland — any topping helps; food-specific ones (sauce,
+        // jalapeños, bacon, parmesan, sour cream...) all count via the same
+        // any-addon helper used elsewhere.
+        {
+            match: /\bseason(?:ing)?\b|\bflavor\b|\bbland\b/,
+            text: 'Add a topping on the Recipe tab',
+            fixProgress: s => GameData._anyAddonProgress(s, 0.5),
+        },
+        // Special / memorable / unique / highlight — tourist/menu complaints.
+        // Any addons help; first one matters most.
+        {
+            match: /\bspecial\b|\bmemorable\b|\bunique\b|\bhighlight\b/,
+            text: 'Add toppings to make it stand out',
+            fixProgress: s => GameData._anyAddonProgress(s, 0.5),
+        },
+        // Vegetarian options — needs a veg addon specifically, not bacon.
+        {
+            match: /\bvegetarian\b/,
+            text: 'Add a veg topping (lettuce, tomato, mushrooms) on the Recipe tab',
+            fixProgress: s => GameData._vegAddonProgress(s),
+        },
+        // Menu limited
+        {
+            match: /\bmenu\b|\blimited\b/,
+            text: 'Expand with toppings on the Recipe tab',
+            fixProgress: s => GameData._anyAddonProgress(s, 0.4),
+        },
+        // Price / portion / value — meal mode and lower price both help.
+        {
+            match: /\bprice\b|\bportion\b|\bbudget\b|\bcheap\b|\bexpensive\b|\bpricey\b|\bvalue\b/,
+            text: 'Adjust menu price or try Meal deal for better value',
+            fixProgress: s => GameData.stackProgress(
+                s.setup?.mealMode ? 0.5 : 0,
+                (s.setup?.priceMultiplier || 1.0) <= 1.0 ? 0.5 : 0,
+            ),
+        },
+        // Quick / combo
+        {
+            match: /\bquick\b|\bcombo\b/,
+            text: 'Turn on Meal deal on the Recipe tab',
+            fixProgress: s => s.setup?.mealMode ? 1.0 : 0,
+        },
+        // Order accuracy
+        {
+            match: /\border right\b|\border wrong\b|\btwo tries\b/,
+            text: 'Hire a Cashier to improve order accuracy',
+            fixProgress: s => GameData._cashierProgress(s),
+        },
+        // Filling / portion-feel
+        {
+            match: /\bfilling\b|\bsmall\b|\bgenerous\b|\bsize\b/,
+            text: 'Add toppings to beef up each sale',
+            fixProgress: s => GameData._anyAddonProgress(s, 0.4),
+        },
+        // Toppings light / not enough toppings
+        {
+            match: /\btopping(?:s)?\b/,
+            text: 'Add more toppings on the Recipe tab',
+            fixProgress: s => GameData._anyAddonProgress(s, 0.3),
+        },
+    ];
+
+    // Compute the fix-progress for a message: the max progress across any
+    // matching rule. Returns 0 if nothing matches.
+    static computeFixProgress(message, state) {
+        if (!state) return 0;
         const m = message.toLowerCase();
-        const hints = [
-            { match: /\bwait\b|\bslow\b|\bslower\b|\bfaster\b|\brushed\b|\blunch window\b/,
-              text: 'Hire a Cook or buy Better Kitchen Equipment' },
-            { match: /\bseat(?:ing)?\b/,
-              text: 'Upgrade Seating on the Upgrades tab' },
-            { match: /\bmusic\b|\batmosphere\b|\bambiance\b|\bambience\b/,
-              text: 'Install a Sound System' },
-            { match: /\bstale\b|\bfresh\b|\bsad\b|\bfrozen\b|\boff\b|\bsoggy\b/,
-              text: 'Try Premium suppliers once you have the trust' },
-            { match: /\bran out\b|\bout of\b|\bempty\b/,
-              text: 'Stock more inventory on the Suppliers tab' },
-            { match: /\bseason(?:ing)?\b|\bflavor\b|\bbland\b|\bspecial\b|\bmemorable\b|\bunique\b/,
-              text: 'Add a topping (sauce, bacon, jalapeños) on the Recipe tab' },
-            { match: /\bportion\b|\bprice\b|\bbudget\b|\bcheap\b|\bexpensive\b|\bpricey\b|\bvalue\b/,
-              text: 'Adjust menu price or try Meal deal for better value' },
-            { match: /\bmenu\b|\blimited\b|\bvegetarian\b|\bhighlight\b/,
-              text: 'Expand with toppings on the Recipe tab' },
-            { match: /\bquick\b|\bcombo\b/,
-              text: 'Turn on Meal deal on the Recipe tab' },
-            { match: /\border right\b|\border wrong\b/,
-              text: 'Hire a Cashier to improve order accuracy' },
-            { match: /\bfilling\b|\bsmall\b|\bgenerous\b|\bsize\b/,
-              text: 'Add toppings to beef up each sale' },
-        ];
-        const hit = hints.find(h => h.match.test(m));
-        return hit ? hit.text : null;
+        let max = 0;
+        for (const rule of this.fixHints) {
+            if (rule.match.test(m)) {
+                const p = rule.fixProgress ? rule.fixProgress(state) : 0;
+                if (p > max) max = p;
+            }
+        }
+        return Math.min(1, Math.max(0, max));
+    }
+
+    // Returns { text, progress, redundant } when a hint matches, or null.
+    // `redundant` is true when progress > 0.7 (close enough that the hint
+    // would feel like nagging — UI suppresses the 💡 line at this point).
+    static getFixHintInfo(message, state = null) {
+        const m = message.toLowerCase();
+        const hit = this.fixHints.find(h => h.match.test(m));
+        if (!hit) return null;
+        const progress = state && hit.fixProgress ? hit.fixProgress(state) : 0;
+        return { text: hit.text, progress, redundant: progress > 0.7 };
+    }
+
+    // Legacy text-only signature.
+    static getFixHint(message) {
+        const info = this.getFixHintInfo(message);
+        return info ? info.text : null;
     }
 
     static getFoodTypeData(foodType) {

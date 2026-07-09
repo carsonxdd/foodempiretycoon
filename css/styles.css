@@ -269,6 +269,136 @@ footer { position: relative; z-index: 1; }
 }
 .resume-modal.hidden { display: none; }
 
+/* ============================== Feedback Modal ============================== */
+.feedback-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s-md);
+}
+.feedback-modal.hidden { display: none; }
+
+.feedback-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(13, 15, 26, 0.85);
+    backdrop-filter: blur(4px);
+}
+
+.feedback-modal-card {
+    position: relative;
+    max-width: 540px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 2px solid var(--blue);
+    border-radius: var(--r-md);
+    padding: var(--s-xl);
+    box-shadow: 0 0 40px rgba(88, 166, 255, 0.2);
+    animation: resumePop 240ms cubic-bezier(.2, .9, .3, 1.2);
+}
+
+.feedback-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--s-sm);
+}
+.feedback-modal-header h3 {
+    color: var(--blue);
+    margin: 0;
+    font-size: var(--t-lg);
+}
+.feedback-modal-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0 var(--s-xs);
+    line-height: 1;
+}
+.feedback-modal-close:hover { color: var(--text); }
+
+.feedback-modal-body { padding: var(--s-sm) 0; }
+
+.feedback-field {
+    margin-bottom: var(--s-md);
+}
+.feedback-field label {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--t-sm);
+    margin-bottom: var(--s-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.feedback-field textarea,
+.feedback-field input[type="text"] {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: var(--s-sm);
+    color: var(--text);
+    font-family: var(--f-body);
+    font-size: var(--t-md);
+    resize: vertical;
+}
+.feedback-field textarea:focus,
+.feedback-field input[type="text"]:focus {
+    outline: none;
+    border-color: var(--blue);
+}
+
+.feedback-type-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-sm);
+}
+.feedback-type-option {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2xs);
+    padding: var(--s-2xs) var(--s-sm);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    font-size: var(--t-md);
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: 0;
+}
+.feedback-type-option input { accent-color: var(--blue); }
+
+.feedback-charcount {
+    text-align: right;
+    color: var(--text-muted);
+    font-size: var(--t-xs);
+    margin-top: var(--s-2xs);
+}
+
+.feedback-context-note {
+    font-size: var(--t-sm);
+    margin-top: var(--s-md);
+    padding-top: var(--s-sm);
+    border-top: 1px solid var(--border);
+}
+
+.feedback-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--s-sm);
+    margin-top: var(--s-md);
+    padding-top: var(--s-md);
+    border-top: 1px solid var(--border);
+}
+
 .resume-modal-backdrop {
     position: absolute;
     inset: 0;
@@ -325,6 +455,15 @@ footer { position: relative; z-index: 1; }
 }
 .resume-stats span:first-child { border-left: 0; }
 
+.resume-flavor {
+    margin-top: var(--s-sm);
+    padding-top: var(--s-sm);
+    border-top: 1px solid var(--border);
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 .resume-actions {
     display: flex;
     gap: var(--s-sm);
@@ -345,6 +484,8 @@ footer { position: relative; z-index: 1; }
     .quote-track,
     .food-backdrop .float { animation: none; }
     .food-backdrop { display: none; }
+    .day-modal-card.weather-rain::before,
+    .day-modal-card.weather-heat::before { animation: none; opacity: 0.8; }
 }
 
 main {
@@ -798,6 +939,34 @@ select:focus {
     font-weight: bold;
 }
 
+/* Reputation tier badge — sits in the existing #reputation stat-value slot */
+.rep-tier {
+    font-size: var(--t-md);
+    color: var(--amber);
+    font-weight: bold;
+    margin-right: var(--s-2xs);
+}
+.rep-num {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    font-weight: normal;
+}
+.rep-bar {
+    display: block;
+    margin-top: 4px;
+    height: 4px;
+    width: 100%;
+    background: var(--surface-2);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.rep-bar-fill {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--amber), var(--green));
+    transition: width 360ms ease-out;
+}
+
 .game-content {
     display: grid;
     grid-template-columns: 200px 1fr;
@@ -899,6 +1068,89 @@ select:focus {
 
 .action-button { width: 100%; }
 
+/* Live storefront visual — reflects business type, upgrades, reputation
+   tier, and the most recent day's weather event at a glance. */
+.storefront-panel {
+    padding: var(--s-md);
+    margin-bottom: var(--s-md);
+}
+
+.storefront-visual {
+    display: flex;
+    align-items: center;
+    gap: var(--s-md);
+}
+
+.storefront-icon {
+    position: relative;
+    font-size: 2.5rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.storefront-weather {
+    position: absolute;
+    bottom: -4px;
+    right: -10px;
+    font-size: 1.1rem;
+}
+
+.storefront-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-sm) var(--s-md);
+}
+
+.storefront-type {
+    font-family: var(--f-pixel);
+    font-size: var(--t-sm);
+    color: var(--amber);
+}
+
+.storefront-tier {
+    font-size: var(--t-md);
+    color: var(--text-muted);
+}
+
+.storefront-crowd {
+    font-size: var(--t-md);
+    letter-spacing: 2px;
+}
+
+.storefront-badges {
+    display: flex;
+    gap: var(--s-xs);
+    font-size: var(--t-md);
+}
+
+.storefront-rival {
+    flex-basis: 100%;
+}
+
+.storefront-rival .rival-label {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+}
+
+.rival-bar {
+    display: block;
+    margin-top: 4px;
+    height: 4px;
+    width: 160px;
+    max-width: 100%;
+    background: var(--surface-2);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.rival-bar-fill {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--coral));
+    transition: width 360ms ease-out;
+}
+
 /* Daily summary — the "chat" log */
 .daily-summary {
     background: var(--surface-2);
@@ -993,6 +1245,19 @@ select:focus {
     font-size: var(--t-md);
     display: block;
     margin-bottom: var(--s-2xs);
+}
+
+.regular-badge {
+    display: inline-block;
+    margin-left: var(--s-xs);
+    padding: 1px var(--s-xs);
+    font-size: var(--t-xs);
+    color: var(--amber);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    vertical-align: middle;
+    cursor: default;
 }
 
 .feedback-bubble .fix-hint {
@@ -1528,6 +1793,7 @@ select:focus {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--s-sm);
     padding: var(--s-xs) var(--s-sm);
     background: var(--surface);
     border: 1px solid var(--border);
@@ -1537,6 +1803,46 @@ select:focus {
 
 .employee-item span { color: var(--text); }
 
+.employee-info {
+    display: flex;
+    align-items: center;
+    gap: var(--s-sm);
+    flex-wrap: wrap;
+}
+
+.employee-name {
+    font-weight: bold;
+}
+
+.employee-level {
+    display: inline-block;
+    padding: 2px 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    border-radius: var(--r-sm);
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.employee-salary {
+    color: var(--text-muted);
+    font-size: var(--t-sm);
+}
+
+.employee-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--s-xs);
+}
+
+.training-status {
+    color: var(--blue);
+    font-size: 10px;
+    font-style: italic;
+}
+
 .fire-button {
     padding: var(--s-2xs) var(--s-xs) !important;
     min-height: 28px !important;
@@ -1544,6 +1850,17 @@ select:focus {
     background: var(--coral) !important;
     color: var(--bg) !important;
     border-color: var(--coral) !important;
+}
+
+.train-button {
+    padding: var(--s-2xs) var(--s-xs) !important;
+    min-height: 28px !important;
+    font-size: 10px !important;
+    line-height: 1.3 !important;
+    text-align: center;
+    background: var(--blue) !important;
+    color: var(--bg) !important;
+    border-color: var(--blue) !important;
 }
 
 /* ============================== Suppliers / Marketing / Upgrades ============================== */
@@ -1931,6 +2248,53 @@ select:focus {
     border-style: dashed;
 }
 
+/* ============================== News ticker ============================== */
+
+.news-ticker-panel {
+    margin-bottom: var(--s-md);
+}
+
+.news-ticker-panel h3 {
+    font-size: var(--t-md);
+    margin-bottom: var(--s-sm);
+}
+
+.news-ticker-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2xs);
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: var(--s-xs);
+}
+
+.news-entry {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--s-sm);
+    padding: var(--s-xs) var(--s-sm);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    font-size: var(--t-sm);
+}
+
+.news-entry .n-icon {
+    font-size: var(--t-md);
+}
+
+.news-entry .n-message {
+    color: var(--text);
+}
+
+.news-entry .n-day {
+    color: var(--text-muted);
+    font-family: var(--f-pixel);
+    font-size: var(--t-xs);
+    white-space: nowrap;
+}
+
 /* ============================== Journal list ============================== */
 
 .journal-panel {
@@ -1999,6 +2363,63 @@ select:focus {
 .journal-entry .j-net.profit { color: var(--green); }
 .journal-entry .j-net.loss { color: var(--coral); }
 
+/* ===================== Health inspector choice modal ===================== */
+/* Shares .day-modal-backdrop / .day-modal-card / .day-modal-header /
+   .day-modal-title / .day-modal-body from the Day modal block below —
+   only the outer wrapper (no close button, blocks dismiss) is distinct. */
+
+.health-inspector-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 13500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s-md);
+    animation: fadeIn var(--t-normal);
+}
+
+.health-inspector-modal.hidden { display: none; }
+
+.hi-choices {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-sm);
+    margin-top: var(--s-md);
+}
+
+.hi-choice {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: var(--s-sm) var(--s-md);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color var(--t-fast), transform var(--t-fast);
+}
+
+.hi-choice:hover {
+    border-color: var(--blue);
+    transform: translateX(4px);
+}
+
+.hi-choice .hi-choice-label {
+    display: block;
+    font-family: var(--f-pixel);
+    font-size: var(--t-sm);
+    color: var(--amber);
+    margin-bottom: var(--s-2xs);
+}
+
+.hi-choice .hi-choice-desc {
+    display: block;
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+}
+
 /* ============================== Day modal ============================== */
 
 .day-modal {
@@ -2039,6 +2460,49 @@ select:focus {
 @keyframes modalIn {
     from { opacity: 0; transform: translateY(12px) scale(0.96); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Subtle weather overlay for the day recap — set on .day-modal-card only
+   when that day's random event was a weather type. Scoped to the card so it
+   never touches the page-level CRT scanline overlay on body::before. */
+.day-modal-card.weather-sunny::before,
+.day-modal-card.weather-rain::before,
+.day-modal-card.weather-cold::before,
+.day-modal-card.weather-heat::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+}
+
+.day-modal-card.weather-sunny::before {
+    background-image: radial-gradient(circle at 50% 0%, rgba(255, 202, 88, 0.18), transparent 70%);
+}
+
+.day-modal-card.weather-rain::before {
+    background-image:
+        repeating-linear-gradient(115deg, rgba(88, 166, 255, 0.14) 0px, rgba(88, 166, 255, 0.14) 2px, transparent 2px, transparent 14px),
+        linear-gradient(rgba(88, 166, 255, 0.06), rgba(88, 166, 255, 0.06));
+    background-position: 0 0, 0 0;
+    animation: rainDrift 2.5s linear infinite;
+}
+@keyframes rainDrift {
+    from { background-position: 0 0, 0 0; }
+    to   { background-position: -70px 140px, 0 0; }
+}
+
+.day-modal-card.weather-cold::before {
+    background-image: linear-gradient(160deg, rgba(88, 166, 255, 0.16), transparent 65%);
+}
+
+.day-modal-card.weather-heat::before {
+    background-image: radial-gradient(circle at 50% 100%, rgba(255, 107, 107, 0.16), transparent 70%);
+    animation: heatShimmer 2.4s ease-in-out infinite;
+}
+@keyframes heatShimmer {
+    0%, 100% { opacity: 0.65; }
+    50%      { opacity: 1; }
 }
 
 .day-modal-header {
@@ -2207,6 +2671,41 @@ select:focus {
     0%   { transform: scale(1); }
     50%  { transform: scale(1.08); color: var(--green); }
     100% { transform: scale(1); }
+}
+
+/* ============================== Milestone celebration ============================== */
+
+.celebrate-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.celebrate-flash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 30%, rgba(255, 202, 88, 0.35), transparent 60%);
+    animation: milestoneFlash 900ms ease-out forwards;
+}
+@keyframes milestoneFlash {
+    0%   { opacity: 0; }
+    15%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+.celebrate-particle {
+    position: absolute;
+    top: -10%;
+    font-size: 1.6rem;
+    animation-name: confettiFall;
+    animation-timing-function: ease-in;
+    animation-fill-mode: forwards;
+}
+@keyframes confettiFall {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
 }
 
 /* ============================== Tutorial ============================== */

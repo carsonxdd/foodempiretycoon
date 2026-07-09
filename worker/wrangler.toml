@@ -1,0 +1,20 @@
+name = "food-empire-feedback"
+main = "feedback.js"
+compatibility_date = "2026-04-01"
+
+# Public-facing variables (NOT secrets — those go in `wrangler secret put`).
+# Loosen ALLOWED_ORIGIN to '*' during local dev/testing; tighten to the prod
+# host once the endpoint URL is wired into FeedbackManager.js.
+[vars]
+ALLOWED_ORIGIN = "*"
+
+# Secrets (set with the CLI — they don't live in source):
+#   wrangler secret put DISCORD_WEBHOOK_URL
+#
+# Routes: leave commented for the *.workers.dev URL during initial setup.
+# Once you confirm it works, optionally bind to a custom subdomain or path
+# pattern under the existing zone — see worker/README.md.
+#
+# [[routes]]
+# pattern = "feedback.foodempiretycoon.com"
+# custom_domain = true

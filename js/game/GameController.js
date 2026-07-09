@@ -8,6 +8,9 @@ class GameController {
         this.uiManager = new UIManager(this.gameState);
         // UIManager reads live economics via the same BusinessLogic instance.
         this.uiManager.businessLogic = this.businessLogic;
+        this.soundManager = new SoundManager();
+        // UIManager plays the page-flip cue directly from its own modal-nav handlers.
+        this.uiManager.soundManager = this.soundManager;
         this.setupManager = new SetupManager(this.gameState, this.uiManager);
         this.tutorialManager = new TutorialManager(this.gameState, this.uiManager);
         
@@ -126,18 +129,124 @@ class GameController {
             tutorialButton.addEventListener('click', () => this.showTutorial());
         }
 
+        // Sound toggle
+        const soundButton = document.getElementById('soundToggle');
+        if (soundButton) {
+            this.updateSoundButton(soundButton);
+            soundButton.addEventListener('click', () => {
+                const enabled = this.soundManager.toggle();
+                this.updateSoundButton(soundButton);
+                if (enabled) this.soundManager.play('pageFlip');
+            });
+        }
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
     }
 
+    updateSoundButton(button) {
+        const enabled = this.soundManager.isEnabled();
+        button.textContent = enabled ? '🔊' : '🔇';
+        button.title = enabled ? 'Sound on — click to mute' : 'Sound off — click to unmute';
+    }
+
     processNextDay() {
+        // Health inspector is a pre-day gate: if it fires, the day's business
+        // processing pauses until the player picks a choice in the modal
+        // (see resolveHealthInspectorChoice, which resumes via _runDayProcessing).
+        if (this.checkHealthInspectorTrigger()) return;
+        this._runDayProcessing();
+    }
+
+    checkHealthInspectorTrigger() {
+        const cfg = GameData.healthInspectorEvent;
+        const hi = this.gameState.healthInspector;
+        if (this.gameState.day < cfg.minDay) return false;
+        if (hi.lastVisitDay !== null && (this.gameState.day - hi.lastVisitDay) < cfg.cooldownDays) return false;
+        if (Math.random() >= cfg.triggerChance) return false;
+
+        this.uiManager.showHealthInspectorModal(cfg, (choiceId) => this.resolveHealthInspectorChoice(choiceId));
+        return true;
+    }
+
+    resolveHealthInspectorChoice(choiceId) {
+        const cfg = GameData.healthInspectorEvent;
+        const choice = cfg.choices.find(c => c.id === choiceId) || cfg.choices[0];
+        const businessType = this.gameState.business.type;
+        let message = '';
+        let icon = cfg.icon;
+
+        if (choice.id === 'bribe') {
+            const cost = choice.costByType[businessType];
+            this.gameState.spendMoney(Math.min(cost, this.gameState.money));
+            if (Math.random() < choice.catchChance) {
+                const caughtCost = choice.caughtCostByType[businessType];
+                this.gameState.spendMoney(Math.min(caughtCost, this.gameState.money));
+                this.gameState.addReputation(choice.caughtRepPenalty);
+                message = `The bribe didn't land well — word got out, and it cost you $${caughtCost} and some reputation.`;
+                icon = '🚨';
+            } else {
+                message = `A little something under the table kept the visit quiet.`;
+            }
+        } else if (choice.id === 'dispute') {
+            if (Math.random() < choice.successChance) {
+                this.gameState.addReputation(choice.successRep);
+                message = `The dispute actually worked — the findings got walked back.`;
+            } else {
+                this.gameState.addReputation(choice.failRep);
+                message = `The dispute didn't go well — the violation stuck, and then some.`;
+            }
+        } else {
+            const cost = choice.costByType[businessType];
+            this.gameState.spendMoney(Math.min(cost, this.gameState.money));
+            message = `Paid $${cost} to fix things up before the inspector left — clean record.`;
+        }
+
+        this.gameState.setHealthInspectorVisit(this.gameState.day);
+        this.gameState.addNewsEntry({ day: this.gameState.day, icon, message });
+        this.uiManager.showNotification(message, icon === '🚨' ? 'error' : 'info');
+
+        this._runDayProcessing();
+    }
+
+    _runDayProcessing() {
         try {
             // Process daily business operations
             const businessResults = this.businessLogic.processDailyBusiness();
-            
+
             // Update UI with results
             this.uiManager.updateDailySummary(businessResults);
-            
+
+            if (businessResults.revenue.actualSales > 0) {
+                this.soundManager.play('sale');
+            }
+
+            // A viral hit today feeds the news ticker.
+            if (this.gameState.marketing.lastViralBonus > 0) {
+                this.gameState.addNewsEntry({
+                    day: this.gameState.day,
+                    icon: '📱',
+                    message: GameData.getNewsLine(GameData.newsTemplates.viral, this.gameState.setup.businessName)
+                });
+            }
+
+            // A new named regular joined the cast today.
+            if (businessResults.newRegular) {
+                this.uiManager.showNotification(
+                    `${businessResults.newRegular.name} is becoming a regular!`,
+                    'success'
+                );
+            }
+
+            // Rival truck momentum crossed a threshold today.
+            if (businessResults.rivalShift) {
+                this.gameState.addNewsEntry({
+                    day: this.gameState.day,
+                    icon: '🥊',
+                    message: GameData.getNewsLine(GameData.newsTemplates[businessResults.rivalShift], this.gameState.setup.businessName)
+                });
+            }
+
             // Check for achievements
             this.checkAchievements();
             
@@ -159,10 +268,21 @@ class GameController {
 
         const selectedType = employeeTypeSelect.value;
         const result = this.businessLogic.purchaseEmployee(selectedType);
-        
+
         if (result.success) {
             this.uiManager.showNotification(result.message, 'success');
             this.triggerTutorialEvent('employeeHired');
+        } else {
+            this.uiManager.showNotification(result.message, 'error');
+        }
+    }
+
+    // Pay to train an employee toward their next level. Cost charged up
+    // front; the level-up lands after the configured number of days.
+    trainEmployee(employeeIndex) {
+        const result = this.businessLogic.purchaseEmployeeTraining(employeeIndex);
+        if (result.success) {
+            this.uiManager.showNotification(result.message, 'success');
         } else {
             this.uiManager.showNotification(result.message, 'error');
         }
@@ -409,6 +529,14 @@ class GameController {
                 this.unlockAchievement(id);
             }
         });
+
+        // Reputation tier milestones — confirm the visible tier promotion.
+        Object.entries(GameData.achievements).forEach(([id, ach]) => {
+            if (ach.reputationThreshold === undefined) return;
+            if (this.gameState.reputation >= ach.reputationThreshold && !this.hasAchievement(id)) {
+                this.unlockAchievement(id);
+            }
+        });
     }
 
     hasAchievement(achievementId) {
@@ -434,6 +562,27 @@ class GameController {
             `Achievement Unlocked: ${achievement.name}! Reward: $${achievement.reward}`,
             'success'
         );
+
+        // Big-ticket milestones (cash/reputation thresholds, millionaire) get a
+        // celebratory burst — minor achievements (first hire, first upgrade,
+        // social media) stay a plain notification so it doesn't feel constant.
+        if (achievement.cashThreshold !== undefined || achievement.reputationThreshold !== undefined || achievementId === 'millionaire') {
+            this.uiManager.celebrate();
+            this.soundManager.play('achievement');
+        }
+
+        // Reputation-tier crossing feeds the news ticker with a flavor line.
+        if (achievement.reputationThreshold !== undefined) {
+            const tier = GameData.getReputationTier(this.gameState.reputation);
+            const pool = GameData.newsTemplates.tierUp[tier.name];
+            if (pool) {
+                this.gameState.addNewsEntry({
+                    day: this.gameState.day,
+                    icon: tier.icon,
+                    message: GameData.getNewsLine(pool, this.gameState.setup.businessName)
+                });
+            }
+        }
     }
 
     checkGameOver() {
@@ -458,7 +607,7 @@ class GameController {
                 message = `Game Over! Your business ran out of money on day ${this.gameState.day}. Better luck next time!`;
                 break;
             case 'victory':
-                message = `Congratulations! You've built a $10 million food empire in ${this.gameState.day} days!`;
+                message = `Congratulations! You've built a $1 million food empire in ${this.gameState.day} days!`;
                 break;
         }
         
@@ -562,6 +711,14 @@ class GameController {
     handleKeyboardShortcuts(event) {
         // Only handle shortcuts if not typing in input fields
         if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
+        const tabKeys = { '1': 'business', '2': 'recipe', '3': 'suppliers', '4': 'employees', '5': 'marketing', '6': 'upgrades' };
+        const gameInterface = document.getElementById('gameInterface');
+        if (tabKeys[event.key] && gameInterface && !gameInterface.classList.contains('hidden')) {
+            event.preventDefault();
+            this.uiManager.switchTab(tabKeys[event.key]);
             return;
         }
 

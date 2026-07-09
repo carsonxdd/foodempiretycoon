@@ -6,6 +6,7 @@ class SetupManager {
         this.gameState = gameState;
         this.uiManager = uiManager;
         this.currentStep = 1;
+        this.stepTransitioning = false;
         this.initializeElements();
         this.setupEventListeners();
     }
@@ -180,6 +181,8 @@ class SetupManager {
     }
 
     selectFoodType(event) {
+        if (this.stepTransitioning) return;
+
         const foodType = event.currentTarget.dataset.food;
         this.gameState.updateSetup('foodType', foodType);
 
@@ -187,9 +190,13 @@ class SetupManager {
         this.elements.foodOptions.forEach(opt => opt.classList.remove('active'));
         event.currentTarget.classList.add('active');
 
-        // Auto-advance to the business name step
+        // Auto-advance to the business name step. Locked so a fast second
+        // click during the transition can't land on a different food card
+        // and silently overwrite this selection.
+        this.stepTransitioning = true;
         setTimeout(() => {
             this.showStep(2);
+            this.stepTransitioning = false;
             // Focus the name input so they can type immediately
             if (this.elements.businessNameInput) this.elements.businessNameInput.focus();
         }, 400);
@@ -215,37 +222,47 @@ class SetupManager {
     }
 
     selectLocation(event) {
+        if (this.stepTransitioning) return;
+
         const locationCard = event.target.closest('.location-card');
         if (!locationCard) return;
 
         const locationName = locationCard.dataset.location;
         const location = GameData.getLocationByName(locationName);
-        
+
         if (location) {
             this.gameState.updateSetup('location', location);
-            
+
             // Update UI
-            this.elements.locationOptions.querySelectorAll('.location-card').forEach(card => 
+            this.elements.locationOptions.querySelectorAll('.location-card').forEach(card =>
                 card.classList.remove('active'));
             locationCard.classList.add('active');
-            
+
             // Auto-advance to next step
-            setTimeout(() => this.showStep(4), 500);
+            this.stepTransitioning = true;
+            setTimeout(() => {
+                this.showStep(4);
+                this.stepTransitioning = false;
+            }, 500);
         }
     }
 
     selectDifficulty(event) {
+        if (this.stepTransitioning) return;
+
         const difficulty = event.currentTarget.dataset.difficulty;
         this.gameState.updateSetup('difficulty', difficulty);
-        
+
         // Update UI
         this.elements.difficultyOptions.forEach(opt => opt.classList.remove('active'));
         event.currentTarget.classList.add('active');
-        
+
         // Auto-advance to review step
+        this.stepTransitioning = true;
         setTimeout(() => {
             this.showStep(5);
             this.updateReview();
+            this.stepTransitioning = false;
         }, 500);
     }
 
@@ -269,6 +286,8 @@ class SetupManager {
     }
 
     startOver() {
+        this.stepTransitioning = false;
+
         // Reset game state setup
         this.gameState.updateSetup('businessName', '');
         this.gameState.updateSetup('foodType', '');
@@ -375,8 +394,7 @@ class SetupManager {
     }
 
     showError(message) {
-        // Simple error display - could be enhanced with better UI
-        alert(message);
+        this.uiManager.showNotification(message, 'error');
     }
 
     // Start button click: if a save exists, surface the resume modal.
@@ -409,6 +427,7 @@ class SetupManager {
                 const businessLabel = business === 'foodTruck' ? 'Food Truck'
                                     : business === 'restaurant' ? 'Restaurant'
                                     : 'Chain';
+                const flavor = typeof GameData !== 'undefined' ? GameData.getResumeFlavor() : '';
                 snap.innerHTML = `
                     <div class="resume-snapshot">
                         <div class="resume-name">${name}</div>
@@ -417,6 +436,7 @@ class SetupManager {
                             <span>$${money.toLocaleString()}</span>
                             <span>${businessLabel}</span>
                         </div>
+                        ${flavor ? `<div class="resume-flavor">${flavor}</div>` : ''}
                     </div>
                 `;
             }

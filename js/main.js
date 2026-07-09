@@ -5,6 +5,11 @@
 
 // Global game controller instance
 let gameController;
+let feedbackManager;
+
+// Game version — surfaced in feedback reports so we can correlate bugs to
+// releases. Bump when shipping a meaningful gameplay change.
+window.GAME_VERSION = '0.32.0';
 
 // Populate the landing quote ticker with a mix of positive feedback lines,
 // each attributed to a random name and a plausible early-game day.
@@ -44,6 +49,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initialize the game controller
         gameController = new GameController();
         gameController.initialize();
+
+        // Wire up the feedback modal — independent of game flow, available
+        // from both landing footer and in-game header button.
+        feedbackManager = new FeedbackManager(gameController.gameState, gameController.uiManager);
 
         console.log('Food Empire Tycoon loaded successfully!');
         

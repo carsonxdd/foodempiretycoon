@@ -274,7 +274,20 @@
                                 <button class="action-button arcade-button" id="saveGame">Save</button>
                                 <button class="action-button arcade-button" id="loadGame">Load</button>
                                 <button class="action-button arcade-button tutorial-button" id="showTutorial">Tutorial</button>
+                                <button class="action-button arcade-button" id="openFeedback" title="Report a bug or share feedback">💬 Feedback</button>
+                                <button class="action-button arcade-button" id="soundToggle" title="Toggle sound">🔊</button>
                                 <button class="action-button arcade-button restart-button" id="restartGame">Start Over</button>
+                            </div>
+                        </div>
+
+                        <div class="storefront-panel arcade-border" id="storefrontPanel">
+                            <!-- Filled by UIManager.updateStorefrontVisual -->
+                        </div>
+
+                        <div class="news-ticker-panel arcade-border">
+                            <h3>Word on the street</h3>
+                            <div class="news-ticker-list" id="newsTicker">
+                                <p class="muted">No buzz yet — keep the doors open.</p>
                             </div>
                         </div>
 
@@ -505,8 +518,45 @@
         </div>
 
         <footer>
-            <p>© 2026 Food Empire Tycoon · Built by <a class="footer-link" href="https://carsoncaplan.com" target="_blank" rel="noopener">Carson Caplan</a> — visit <a class="footer-link" href="https://carsoncaplan.com" target="_blank" rel="noopener">carsoncaplan.com</a> for more</p>
+            <p>© 2026 Food Empire Tycoon · Built by <a class="footer-link" href="https://carsoncaplan.com" target="_blank" rel="noopener">Carson Caplan</a> — visit <a class="footer-link" href="https://carsoncaplan.com" target="_blank" rel="noopener">carsoncaplan.com</a> for more · <a href="#" class="footer-link" id="openFeedbackFooter">Send feedback</a></p>
         </footer>
+
+        <!-- Feedback modal — bug reports and feature ideas. Anonymous by
+             default; auto-attaches game state context to help triage. -->
+        <div id="feedbackModal" class="feedback-modal hidden" aria-hidden="true">
+            <div class="feedback-modal-backdrop" data-feedback-close></div>
+            <div class="feedback-modal-card arcade-border" role="dialog" aria-modal="true" aria-labelledby="feedbackTitle">
+                <div class="feedback-modal-header">
+                    <h3 id="feedbackTitle">Send feedback</h3>
+                    <button class="feedback-modal-close" data-feedback-close aria-label="Close">×</button>
+                </div>
+                <div class="feedback-modal-body">
+                    <p class="muted">Found a bug? Got an idea? Let me know. Anonymous by default — no account required.</p>
+                    <div class="feedback-field">
+                        <label>Type</label>
+                        <div class="feedback-type-group">
+                            <label class="feedback-type-option"><input type="radio" name="feedbackType" value="bug" checked> 🐛 Bug</label>
+                            <label class="feedback-type-option"><input type="radio" name="feedbackType" value="feature"> ✨ Feature idea</label>
+                            <label class="feedback-type-option"><input type="radio" name="feedbackType" value="other"> 💬 Other</label>
+                        </div>
+                    </div>
+                    <div class="feedback-field">
+                        <label for="feedbackMessage">What happened? <span class="muted">(required)</span></label>
+                        <textarea id="feedbackMessage" rows="5" maxlength="2000" placeholder="The more detail the better — what you were doing, what you expected, what actually happened."></textarea>
+                        <div class="feedback-charcount"><span id="feedbackCharCount">0</span> / 2000</div>
+                    </div>
+                    <div class="feedback-field">
+                        <label for="feedbackName">Name or contact <span class="muted">(optional — leave blank to stay anonymous)</span></label>
+                        <input type="text" id="feedbackName" maxlength="120" placeholder="email, Discord handle, or just a name">
+                    </div>
+                    <p class="feedback-context-note muted">A snapshot of your current game (day, business type, cash, difficulty) is attached to help diagnose bugs. No save data, no personal info.</p>
+                </div>
+                <div class="feedback-modal-footer">
+                    <button class="arcade-button" data-feedback-close>Cancel</button>
+                    <button id="feedbackSubmit" class="arcade-button primary">Send</button>
+                </div>
+            </div>
+        </div>
 
         <!-- Day recap modal — popup daily summary + journal browser -->
         <div class="day-modal hidden" id="dayModal" aria-hidden="true">
@@ -526,14 +576,29 @@
                 </div>
             </div>
         </div>
+
+        <!-- Health inspector event — blocks day-advance until a choice is made, no backdrop dismiss -->
+        <div class="health-inspector-modal hidden" id="healthInspectorModal" aria-hidden="true">
+            <div class="day-modal-backdrop"></div>
+            <div class="day-modal-card" role="dialog" aria-modal="true" aria-labelledby="healthInspectorTitle">
+                <div class="day-modal-header">
+                    <div class="day-modal-title" id="healthInspectorTitle">🕵️ Health Inspector</div>
+                </div>
+                <div class="day-modal-body" id="healthInspectorBody">
+                    <!-- Filled by UIManager.showHealthInspectorModal -->
+                </div>
+            </div>
+        </div>
     </div>
     <!-- Game Modules -->
     <script src="js/modules/GameData.js"></script>
     <script src="js/modules/GameState.js"></script>
     <script src="js/modules/TutorialManager.js"></script>
+    <script src="js/modules/SoundManager.js"></script>
     <script src="js/game/BusinessLogic.js"></script>
     <script src="js/ui/UIManager.js"></script>
     <script src="js/ui/SetupManager.js"></script>
+    <script src="js/ui/FeedbackManager.js"></script>
     <script src="js/game/GameController.js"></script>
     <script src="js/main.js"></script>
 </body>

@@ -54,7 +54,11 @@ class GameState {
                 drinks: 0, sides: 0
             },
             regulars: 0,
-            history: []
+            history: [],
+            newsFeed: [],
+            regularCustomers: [],
+            healthInspector: { lastVisitDay: null },
+            rivalTruck: { name: GameData.getRandomRivalName(), momentum: 50 }
         };
     }
 
@@ -73,11 +77,47 @@ class GameState {
     get supplierOrders() { return this.state.supplierOrders; }
     get regulars() { return this.state.regulars; }
     get history() { return this.state.history || []; }
+    get newsFeed() { return this.state.newsFeed || []; }
+    get regularCustomers() { return this.state.regularCustomers || []; }
+    get healthInspector() { return this.state.healthInspector || { lastVisitDay: null }; }
+    get rivalTruck() { return this.state.rivalTruck || { name: 'A rival truck', momentum: 50 }; }
 
     addHistoryEntry(entry) {
         if (!this.state.history) this.state.history = [];
         this.state.history.push(entry);
         this.notifyObservers('history', this.state.history);
+    }
+
+    addNewsEntry(entry) {
+        if (!Array.isArray(this.state.newsFeed)) this.state.newsFeed = [];
+        this.state.newsFeed.push(entry);
+        if (this.state.newsFeed.length > 20) this.state.newsFeed.shift();
+        this.notifyObservers('newsFeed', this.state.newsFeed);
+    }
+
+    addRegularCustomer(entry) {
+        if (!Array.isArray(this.state.regularCustomers)) this.state.regularCustomers = [];
+        this.state.regularCustomers.push(entry);
+        this.notifyObservers('regularCustomers', this.state.regularCustomers);
+    }
+
+    incrementRegularVisit(name) {
+        const regular = (this.state.regularCustomers || []).find(r => r.name === name);
+        if (!regular) return;
+        regular.visits = (regular.visits || 0) + 1;
+        this.notifyObservers('regularCustomers', this.state.regularCustomers);
+    }
+
+    setHealthInspectorVisit(day) {
+        if (!this.state.healthInspector) this.state.healthInspector = { lastVisitDay: null };
+        this.state.healthInspector.lastVisitDay = day;
+        this.notifyObservers('healthInspector', this.state.healthInspector);
+    }
+
+    setRivalMomentum(momentum) {
+        if (!this.state.rivalTruck) this.state.rivalTruck = { name: GameData.getRandomRivalName(), momentum: 50 };
+        this.state.rivalTruck.momentum = Math.max(0, Math.min(100, momentum));
+        this.notifyObservers('rivalTruck', this.state.rivalTruck);
     }
 
     incrementSupplierOrders(type) {
@@ -98,7 +138,10 @@ class GameState {
 
     // State setters
     setMoney(amount) {
-        this.state.money = Math.max(0, amount);
+        // Round to the nearest cent so repeated fractional charges (daily
+        // overhead is charged as a fraction of the monthly total) don't
+        // accumulate into floating-point noise like 5813.333333333333.
+        this.state.money = Math.max(0, Math.round(amount * 100) / 100);
         this.notifyObservers('money', this.state.money);
     }
 
@@ -139,13 +182,39 @@ class GameState {
 
     // Employee management
     addEmployee(employee) {
-        this.state.employees.push(employee);
+        // Default level/training fields so old call sites keep working.
+        const emp = {
+            level: 1,
+            training: null,
+            ...employee,
+        };
+        this.state.employees.push(emp);
         this.notifyObservers('employees', this.state.employees);
     }
 
     removeEmployee(index) {
         this.state.employees.splice(index, 1);
         this.notifyObservers('employees', this.state.employees);
+    }
+
+    // Start training an employee toward a target level. Caller is responsible
+    // for charging the cost and validating eligibility (BusinessLogic does this).
+    startEmployeeTraining(index, targetLevel, startDay) {
+        const emp = this.state.employees[index];
+        if (!emp) return false;
+        emp.training = { startDay, targetLevel };
+        this.notifyObservers('employees', this.state.employees);
+        return true;
+    }
+
+    // Complete a pending training: bump level, clear flag.
+    completeEmployeeTraining(index) {
+        const emp = this.state.employees[index];
+        if (!emp || !emp.training) return false;
+        emp.level = emp.training.targetLevel;
+        emp.training = null;
+        this.notifyObservers('employees', this.state.employees);
+        return true;
     }
 
     // Marketing management
@@ -228,6 +297,17 @@ class GameState {
             const savedState = localStorage.getItem('foodEmpireGameState');
             if (savedState) {
                 this.state = { ...this.state, ...JSON.parse(savedState) };
+                // Backfill fields added in later versions so old saves keep working.
+                if (Array.isArray(this.state.employees)) {
+                    this.state.employees.forEach(e => {
+                        if (e.level === undefined) e.level = 1;
+                        if (e.training === undefined) e.training = null;
+                    });
+                }
+                if (!Array.isArray(this.state.newsFeed)) this.state.newsFeed = [];
+                if (!Array.isArray(this.state.regularCustomers)) this.state.regularCustomers = [];
+                if (!this.state.healthInspector) this.state.healthInspector = { lastVisitDay: null };
+                if (!this.state.rivalTruck) this.state.rivalTruck = { name: GameData.getRandomRivalName(), momentum: 50 };
                 this.notifyObservers('load', this.state);
                 return true;
             }
@@ -288,7 +368,11 @@ class GameState {
                 drinks: 0, sides: 0
             },
             regulars: 0,
-            history: []
+            history: [],
+            newsFeed: [],
+            regularCustomers: [],
+            healthInspector: { lastVisitDay: null },
+            rivalTruck: { name: GameData.getRandomRivalName(), momentum: 50 }
         };
         this.notifyObservers('reset', this.state);
     }
