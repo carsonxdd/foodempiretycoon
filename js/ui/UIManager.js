@@ -429,6 +429,57 @@ class UIManager {
     }
 
     // Recipe builder — renders cores, addons, meal toggle, and a live price preview.
+    // Runs `updateFn` (an innerHTML swap that may grow/shrink an element's
+    // content) as a smooth height transition instead of an instant snap.
+    // Fixes the "whole page jumps down" feel when toggling a recipe chip —
+    // the container animates from its old height to its new one rather than
+    // reflowing everything below it in a single frame. No-ops (just runs
+    // updateFn) under prefers-reduced-motion or if heights don't change.
+    animateHeightChange(el, updateFn) {
+        if (!el) { updateFn(); return; }
+        const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // A prior toggle's animation may still be settling — cancel its
+        // cleanup so it doesn't fire mid-way through this one and clear
+        // styles out from under it.
+        if (el._heightAnimCleanup) el._heightAnimCleanup();
+
+        if (reducedMotion) { updateFn(); return; }
+
+        const startHeight = el.offsetHeight;
+        updateFn();
+        const endHeight = el.scrollHeight;
+        if (startHeight === endHeight) return;
+
+        el.style.height = startHeight + 'px';
+        el.style.overflow = 'hidden';
+        void el.offsetHeight; // force reflow so the transition picks up the start height
+        el.style.transition = 'height var(--t-normal) ease';
+
+        requestAnimationFrame(() => {
+            el.style.height = endHeight + 'px';
+        });
+
+        const cleanup = () => {
+            el.style.height = '';
+            el.style.overflow = '';
+            el.style.transition = '';
+            el.removeEventListener('transitionend', onEnd);
+            clearTimeout(fallbackId);
+            el._heightAnimCleanup = null;
+        };
+        const onEnd = (e) => {
+            if (e.target !== el || e.propertyName !== 'height') return;
+            cleanup();
+        };
+        // Safety net: if transitionend never fires (tab backgrounded during
+        // the transition, `transition` overridden elsewhere, etc.), don't
+        // leave the element permanently clipped at the old height.
+        const fallbackId = setTimeout(cleanup, 400);
+        el.addEventListener('transitionend', onEnd);
+        el._heightAnimCleanup = cleanup;
+    }
+
     updateRecipePanel() {
         const food = GameData.getFoodTypeData(this.gameState.setup.foodType);
         if (!food) return;
@@ -495,8 +546,8 @@ class UIManager {
 
         const coreEl = document.getElementById('recipeCoreChips');
         const addonEl = document.getElementById('recipeAddonChips');
-        if (coreEl) coreEl.innerHTML = coreKeys.map(renderCoreChip).join('');
-        if (addonEl) addonEl.innerHTML = addonKeys.map(renderAddonChip).join('');
+        if (coreEl) this.animateHeightChange(coreEl, () => { coreEl.innerHTML = coreKeys.map(renderCoreChip).join(''); });
+        if (addonEl) this.animateHeightChange(addonEl, () => { addonEl.innerHTML = addonKeys.map(renderAddonChip).join(''); });
 
         // Meal toggle
         const mealRow = document.getElementById('mealToggleRow');
@@ -555,22 +606,24 @@ class UIManager {
                 ? Math.min(...cats.map(k => Math.floor((inv[k] || 0) / consumption[k])))
                 : 0;
 
-            summary.innerHTML = `
-                <div>
-                    <div class="summary-label">Sell price</div>
-                    <div class="summary-price">$${price.toFixed(2)}</div>
-                    <div class="summary-breakdown">${food.name} base $${food.basePrice}${addonPriceParts.length ? ' · ' + addonPriceParts.join(' · ') : ''}${mult !== 1 ? ` · ${(mult * 100).toFixed(0)}% price` : ''}</div>
-                </div>
-                <div>
-                    <div class="summary-label">Per sale consumes</div>
-                    <div class="summary-cons">${consLines || '<span class="muted">Nothing in the recipe.</span>'}</div>
-                    <div class="summary-breakdown">Current stock supports ~${coverage} ${coverage === 1 ? 'sale' : 'sales'}</div>
-                </div>
-                <div>
-                    <div class="summary-label">Conversion</div>
-                    <div class="summary-conversion">${Math.round(conv * 100)}%${missing > 0 ? ` <span class="loss">(${missing} cores off)</span>` : ''}</div>
-                </div>
-            `;
+            this.animateHeightChange(summary, () => {
+                summary.innerHTML = `
+                    <div>
+                        <div class="summary-label">Sell price</div>
+                        <div class="summary-price">$${price.toFixed(2)}</div>
+                        <div class="summary-breakdown">${food.name} base $${food.basePrice}${addonPriceParts.length ? ' · ' + addonPriceParts.join(' · ') : ''}${mult !== 1 ? ` · ${(mult * 100).toFixed(0)}% price` : ''}</div>
+                    </div>
+                    <div>
+                        <div class="summary-label">Per sale consumes</div>
+                        <div class="summary-cons">${consLines || '<span class="muted">Nothing in the recipe.</span>'}</div>
+                        <div class="summary-breakdown">Current stock supports ~${coverage} ${coverage === 1 ? 'sale' : 'sales'}</div>
+                    </div>
+                    <div>
+                        <div class="summary-label">Conversion</div>
+                        <div class="summary-conversion">${Math.round(conv * 100)}%${missing > 0 ? ` <span class="loss">(${missing} cores off)</span>` : ''}</div>
+                    </div>
+                `;
+            });
         }
     }
 
