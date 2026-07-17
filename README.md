@@ -135,6 +135,7 @@ js/ui/SetupManager.js           Setup wizard
 **Now live at [foodempiretycoon.com](https://foodempiretycoon.com)** — self-hosted on a Raspberry Pi, source on [GitHub](https://github.com/carsonxdd/foodempiretycoon).
 
 Feature-complete for the core loop. Recent additions:
+- **Favicon** — a simple burger-icon SVG (`favicon.svg`) matching the site palette, so the browser tab and bookmarks aren't blank
 - **Smoother recipe toggles** — clicking a core ingredient or topping now animates the summary panel and chip grids to their new height instead of snapping instantly, so the Recipe tab no longer jolts the rest of the page down when its content grows or shrinks.
 - **Rival truck + health inspector** — a named competitor with a momentum stat that drifts based on your prices/reputation, tugs your daily customer count, and shows up as a bar on the storefront panel; plus a rare (2%, day 10+) pre-day health-inspector event with a real branching choice (comply / bribe / dispute). Both feed a new "word on the street" news ticker on the Business tab.
 - **Immersion & smoothness pass** — tab hotkeys (`1`–`6`), a flavor line on the Resume modal, a screen-flash + confetti burst on big milestones, procedural sound effects with a 🔊/🔇 toggle, a rain/sun/cold/heat tint on the day-recap modal keyed to that day's weather event, and a live storefront panel (business icon, reputation-tier crowd size, owned upgrades, weather) on the Business tab
