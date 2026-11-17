@@ -9,7 +9,7 @@ let feedbackManager;
 
 // Game version — surfaced in feedback reports so we can correlate bugs to
 // releases. Bump when shipping a meaningful gameplay change.
-window.GAME_VERSION = '0.33.0';
+window.GAME_VERSION = '0.33.1';
 
 // Populate the landing quote ticker with a mix of positive feedback lines,
 // each attributed to a random name and a plausible early-game day.

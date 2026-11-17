@@ -320,6 +320,12 @@ class SetupManager {
             return;
         }
 
+        // A brand-new run owns no achievements. Clear any left in the global
+        // key: pre-0.33 "Restart" removed the save but kept this key, so a
+        // player arriving with no save could still have old flags that would
+        // block this game's milestone bonuses.
+        try { localStorage.removeItem('foodEmpireAchievements'); } catch (e) {}
+
         // Apply difficulty settings to starting money
         const difficultyData = GameData.getDifficultySettings(setup.difficulty);
         this.gameState.setMoney(difficultyData.startingMoney);
