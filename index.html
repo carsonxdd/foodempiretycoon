@@ -53,7 +53,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="css/styles.css?v=0.33.1">
+    <link rel="stylesheet" href="css/styles.css?v=0.34.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&family=Press+Start+2P&family=Space+Grotesk:wght@400..700&display=swap" rel="stylesheet">
@@ -269,7 +269,8 @@
                                 <p><span class="label">Name</span> <span id="businessNameDisplay"></span></p>
                                 <p><span class="label">Type</span> <span id="businessType">Food Truck</span></p>
                                 <p><span class="label">Location</span> <span id="businessLocation"></span></p>
-                                <p><span class="label">Customers yesterday</span> <span id="dailyCustomers">0</span></p>
+                                <p><span class="label">Visitors yesterday</span> <span id="dailyVisitors">0</span></p>
+                                <p><span class="label">Customers yesterday</span> <span id="dailyCustomers" title="Visitors who bought">0</span></p>
                             </div>
                             <div class="business-actions">
                                 <button class="action-button arcade-button primary" id="nextDay">Next Day</button>
@@ -278,6 +279,7 @@
                                 <button class="action-button arcade-button tutorial-button" id="showTutorial">Tutorial</button>
                                 <button class="action-button arcade-button" id="openFeedback" title="Report a bug or share feedback">💬 Feedback</button>
                                 <button class="action-button arcade-button" id="soundToggle" title="Toggle sound">🔊</button>
+                                <button class="action-button arcade-button classroom-toggle" id="classroomToggle" aria-pressed="false">🎓 Classroom: Off</button>
                                 <button class="action-button arcade-button restart-button" id="restartGame">Start Over</button>
                             </div>
                         </div>
@@ -594,15 +596,15 @@
         </div>
     </div>
     <!-- Game Modules -->
-    <script src="js/modules/GameData.js?v=0.33.1"></script>
-    <script src="js/modules/GameState.js?v=0.33.1"></script>
-    <script src="js/modules/TutorialManager.js?v=0.33.1"></script>
-    <script src="js/modules/SoundManager.js?v=0.33.1"></script>
-    <script src="js/game/BusinessLogic.js?v=0.33.1"></script>
-    <script src="js/ui/UIManager.js?v=0.33.1"></script>
-    <script src="js/ui/SetupManager.js?v=0.33.1"></script>
-    <script src="js/ui/FeedbackManager.js?v=0.33.1"></script>
-    <script src="js/game/GameController.js?v=0.33.1"></script>
-    <script src="js/main.js?v=0.33.1"></script>
+    <script src="js/modules/GameData.js?v=0.34.0"></script>
+    <script src="js/modules/GameState.js?v=0.34.0"></script>
+    <script src="js/modules/TutorialManager.js?v=0.34.0"></script>
+    <script src="js/modules/SoundManager.js?v=0.34.0"></script>
+    <script src="js/game/BusinessLogic.js?v=0.34.0"></script>
+    <script src="js/ui/UIManager.js?v=0.34.0"></script>
+    <script src="js/ui/SetupManager.js?v=0.34.0"></script>
+    <script src="js/ui/FeedbackManager.js?v=0.34.0"></script>
+    <script src="js/game/GameController.js?v=0.34.0"></script>
+    <script src="js/main.js?v=0.34.0"></script>
 </body>
 </html>

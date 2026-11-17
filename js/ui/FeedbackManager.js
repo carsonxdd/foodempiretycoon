@@ -77,6 +77,7 @@ class FeedbackManager {
             businessType: s.business?.type || null,
             difficulty: s.setup?.difficulty || null,
             employees: Array.isArray(s.employees) ? s.employees.length : 0,
+            classroomMode: GameData.isClassroomMode(),
             url: location.pathname + location.search,
             userAgent: navigator.userAgent,
             viewport: `${window.innerWidth}x${window.innerHeight}`,

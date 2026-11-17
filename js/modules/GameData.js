@@ -1119,6 +1119,23 @@ class GameData {
         return notes;
     }
 
+    // Classroom mode: no cash that isn't earned from running the business
+    // (achievement rewards, tutorial bonus, customer tips). Real costs still
+    // apply. Global flag so it covers existing saves and new games alike;
+    // turned on by a ?classroom link or the in-game classroom button.
+    static CLASSROOM_KEY = 'foodEmpireClassroomMode';
+
+    static isClassroomMode() {
+        try { return localStorage.getItem(this.CLASSROOM_KEY) === '1'; }
+        catch (e) { return false; }
+    }
+
+    static setClassroomMode(on) {
+        try {
+            localStorage.setItem(this.CLASSROOM_KEY, on ? '1' : '0');
+        } catch (e) { /* storage blocked - mode just won't persist */ }
+    }
+
     static getResumeFlavor() {
         return this.resumeFlavor[Math.floor(Math.random() * this.resumeFlavor.length)];
     }

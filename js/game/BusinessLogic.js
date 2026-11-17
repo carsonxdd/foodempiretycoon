@@ -923,7 +923,9 @@ class BusinessLogic {
             if (event.rep >= 0) this.gameState.addReputation(event.rep);
             else this.gameState.setReputation(this.gameState.reputation + event.rep);
         }
-        if (event.tip !== undefined) {
+        // Classroom mode drops tips (free money) but keeps comps (a real cost),
+        // so cash moves only with sales and real costs.
+        if (event.tip !== undefined && !(GameData.isClassroomMode() && event.tip > 0)) {
             this.gameState.addMoney(event.tip);
             this.gameState.logOtherCash(
                 `${event.icon || ''} ${event.tip >= 0 ? 'Customer tip' : 'Comped a customer'}`.trim(),

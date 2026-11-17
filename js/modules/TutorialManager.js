@@ -202,6 +202,10 @@ class TutorialManager {
         this.clearHighlights();
         this.removeCard();
         this.markDone();
+        if (GameData.isClassroomMode()) {
+            this.uiManager.showNotification('Tutorial complete!', 'success');
+            return;
+        }
         this.gameState.addMoney(500);
         this.gameState.logOtherCash('🎓 Tutorial bonus', 500);
         this.uiManager.showNotification('Tutorial complete! +$500', 'success');

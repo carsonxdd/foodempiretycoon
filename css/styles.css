@@ -685,6 +685,12 @@ button:disabled {
     color: var(--green);
 }
 
+.classroom-toggle.is-on {
+    background: var(--amber);
+    color: var(--bg);
+    border-color: var(--amber);
+}
+
 .arcade-button.purchased {
     background: var(--surface);
     color: var(--green);

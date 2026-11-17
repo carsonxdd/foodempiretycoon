@@ -9,7 +9,7 @@ let feedbackManager;
 
 // Game version — surfaced in feedback reports so we can correlate bugs to
 // releases. Bump when shipping a meaningful gameplay change.
-window.GAME_VERSION = '0.33.1';
+window.GAME_VERSION = '0.34.0';
 
 // Populate the landing quote ticker with a mix of positive feedback lines,
 // each attributed to a random name and a plausible early-game day.
@@ -40,9 +40,19 @@ function populateLandingTicker() {
     track.innerHTML = quotes + '<span class="quote-sep">·</span>' + quotes;
 }
 
+// ?classroom (or ?classroom=on) turns classroom mode on; ?classroom=off turns
+// it off. Applied before the game boots so it covers a resumed save too.
+function applyClassroomParam() {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('classroom')) return;
+    const v = (params.get('classroom') || '').toLowerCase();
+    GameData.setClassroomMode(!['0', 'off', 'false', 'no'].includes(v));
+}
+
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     try {
+        applyClassroomParam();
         // Landing ambience — independent of game init, so it shows even if game fails.
         populateLandingTicker();
 

@@ -1215,13 +1215,16 @@ class UIManager {
         this.openDayModal(latest.day);
     }
 
-    // "Customers yesterday" on the Business tab status card.
+    // Business tab status card. Visitors = everyone who walked up;
+    // customers = the visitors who actually bought (walk-aways aren't customers).
     updateYesterdayCustomers() {
         if (!this.elements.dailyCustomers) return;
         const hist = this.gameState.history || [];
         const latest = hist[hist.length - 1];
+        const visitorsEl = document.getElementById('dailyVisitors');
+        if (visitorsEl) visitorsEl.textContent = latest ? `${latest.customers}` : '—';
         this.elements.dailyCustomers.textContent = latest
-            ? `${latest.customers} (${latest.revenue?.actualSales ?? 0} bought)`
+            ? `${latest.revenue?.actualSales ?? 0}`
             : '—';
     }
 

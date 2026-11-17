@@ -140,8 +140,32 @@ class GameController {
             });
         }
 
+        // Classroom mode toggle (no non-sales cash bonuses)
+        const classroomButton = document.getElementById('classroomToggle');
+        if (classroomButton) {
+            this.updateClassroomButton(classroomButton);
+            classroomButton.addEventListener('click', () => {
+                const on = !GameData.isClassroomMode();
+                GameData.setClassroomMode(on);
+                this.updateClassroomButton(classroomButton);
+                this.uiManager.showNotification(on
+                    ? 'Classroom mode on: no achievement, tutorial or tip bonuses from now on.'
+                    : 'Classroom mode off: achievement bonuses are back.', 'info');
+            });
+        }
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+    }
+
+    updateClassroomButton(button) {
+        const on = GameData.isClassroomMode();
+        button.textContent = on ? '🎓 Classroom: On' : '🎓 Classroom: Off';
+        button.classList.toggle('is-on', on);
+        button.setAttribute('aria-pressed', on ? 'true' : 'false');
+        button.title = on
+            ? 'Classroom mode: cash comes only from sales - no achievement, tutorial or tip bonuses. Click to turn off.'
+            : 'Turn on classroom mode: no achievement, tutorial or tip bonuses, so cash reflects only sales.';
     }
 
     updateSoundButton(button) {
@@ -568,13 +592,18 @@ class GameController {
         unlockedAchievements.push(achievementId);
         localStorage.setItem('foodEmpireAchievements', JSON.stringify(unlockedAchievements));
 
-        // Give reward
-        this.gameState.addMoney(achievement.reward);
-        this.gameState.logOtherCash(`🏆 Achievement: ${achievement.name}`, achievement.reward);
-        
+        // Give reward - skipped in classroom mode so cash reflects only sales.
+        const classroom = GameData.isClassroomMode();
+        if (!classroom) {
+            this.gameState.addMoney(achievement.reward);
+            this.gameState.logOtherCash(`🏆 Achievement: ${achievement.name}`, achievement.reward);
+        }
+
         // Show notification
         this.uiManager.showNotification(
-            `Achievement Unlocked: ${achievement.name}! Reward: $${achievement.reward}`,
+            classroom
+                ? `Achievement Unlocked: ${achievement.name}! (Classroom mode: no cash bonus)`
+                : `Achievement Unlocked: ${achievement.name}! Reward: $${achievement.reward}`,
             'success'
         );
 
