@@ -44,6 +44,8 @@ class BusinessLogic {
         let baseCustomers = 8 + Math.floor(Math.random() * 14);
         baseCustomers *= (location?.modifiers?.customerBase || 1.0);
         baseCustomers *= difficulty.customerMultiplier;
+        // How well this food suits the location's crowd (students/pros/tourists).
+        baseCustomers *= this.getFoodAppeal();
 
         if (businessType === 'restaurant') baseCustomers *= 1.8;
         else if (businessType === 'chain') baseCustomers *= 3.0;
@@ -58,8 +60,9 @@ class BusinessLogic {
             ? Math.floor(Math.pow(empCount, 0.7) * 3 * avgEmpMult)
             : 0;
 
-        // Reputation now accumulates slower → bonus kicks in slower too.
-        const reputationBonus = Math.floor(this.gameState.reputation / 50);
+        // Reputation draws extra walk-ups with diminishing returns (caps near
+        // +20), so word of mouth can't snowball into unlimited traffic.
+        const reputationBonus = Math.floor(GameData.getReputationCustomerBonus(this.gameState.reputation));
 
         // Marketing
         let marketingBonus = 0;
@@ -95,12 +98,12 @@ class BusinessLogic {
         return Math.max(1, walkUps + regularsToday);
     }
 
-    // Calculate daily revenue
-    calculateDailyRevenue(customers) {
+    // What a customer actually pays per sale. Single source of truth for the
+    // daily sim AND the Menu pricing panel, so the price players see is the
+    // price customers pay.
+    calculateSellPrice() {
         const setup = this.gameState.setup;
         const foodData = GameData.getFoodTypeData(setup.foodType);
-        const difficulty = GameData.getDifficultySettings(setup.difficulty);
-
         if (!foodData) return 0;
 
         // Start with the food's base price.
@@ -122,18 +125,28 @@ class BusinessLogic {
         const priceMult = setup.priceMultiplier || 1.0;
         basePrice *= priceMult;
 
-        // Employee price modifiers
-        const cooks = this.gameState.employees.filter(emp => emp.type === 'cook');
-        if (cooks.length > 0) {
-            const cookData = GameData.getEmployeeType('cook');
-            basePrice *= (cookData.benefits.priceMultiplier || 1.0);
-        }
+        // Kitchen staff premium — the best cook/chef on the team sets it
+        // (cook +8%, chef +15%). Previously only cooks counted.
+        const staffPremium = this.gameState.employees.reduce((best, emp) => {
+            const m = GameData.getEmployeeType(emp.type)?.benefits?.priceMultiplier || 1.0;
+            return Math.max(best, m);
+        }, 1.0);
+        basePrice *= staffPremium;
 
         // Upgrade modifiers
         if (this.gameState.upgrades.seating) {
             const seatingData = GameData.getUpgradeType('seating');
             basePrice *= (seatingData.benefits.averageSpend || 1.0);
         }
+
+        return basePrice;
+    }
+
+    // Calculate daily revenue
+    calculateDailyRevenue(customers) {
+        if (!GameData.getFoodTypeData(this.gameState.setup.foodType)) return 0;
+        const setup = this.gameState.setup;
+        const basePrice = this.calculateSellPrice();
 
         // Customer conversion rate (not all lookers buy)
         const conversionRate = this.calculateConversionRate();
@@ -177,7 +190,11 @@ class BusinessLogic {
 
         // Employee costs (monthly salary / 30 days). Salary scales with
         // employee level via GameData.getEmployeeSalary.
+        // A new hire's first month is paid up front at hiring, so they're
+        // skipped here until that prepaid month runs out (no double pay).
+        const day = this.gameState.day;
         const employeeCosts = this.gameState.employees.reduce((total, emp) => {
+            if (emp.prepaidUntil && day < emp.prepaidUntil) return total;
             return total + (GameData.getEmployeeSalary(emp) / 30);
         }, 0);
 
@@ -201,7 +218,9 @@ class BusinessLogic {
 
         // Recurring marketing
         let marketingCosts = 0;
-        if (this.gameState.marketing.hasSocialMediaAds) {
+        const adsPrepaid = this.gameState.marketing.adsPrepaidUntil
+            && day < this.gameState.marketing.adsPrepaidUntil;
+        if (this.gameState.marketing.hasSocialMediaAds && !adsPrepaid) {
             marketingCosts += GameData.marketingOptions.socialMediaAds.cost / 30;
         }
 
@@ -224,12 +243,20 @@ class BusinessLogic {
     }
 
     // Calculate customer conversion rate
+    // Food appeal for this location's crowd (GameData.foodTypes[*].customerAppeal).
+    getFoodAppeal() {
+        const setup = this.gameState.setup;
+        const food = GameData.getFoodTypeData(setup.foodType);
+        const audience = { college: 'students', business: 'professionals', tourist: 'tourists' }[setup.location?.type];
+        return (food?.customerAppeal && audience && food.customerAppeal[audience]) || 1.0;
+    }
+
     calculateConversionRate() {
         let baseRate = 0.7; // 70% of people who look actually buy
 
-        // Price sensitivity: 1.0x = neutral, 0.5x = +30%, 1.5x = -30%.
+        // Price is applied at the end as a multiplier (see priceFactor) so it
+        // always moves demand — the 95% cap can't swallow it.
         const priceMult = this.gameState.setup.priceMultiplier || 1.0;
-        baseRate -= (priceMult - 1.0) * 0.6;
 
         // Recipe penalty: each missing *per-food* core ingredient scares off buyers (-15%).
         // A burger without lettuce is fine — lettuce isn't core for a burger.
@@ -279,7 +306,14 @@ class BusinessLogic {
         const reputationBonus = Math.min(0.2, this.gameState.reputation / 1000);
         baseRate += reputationBonus;
 
-        return Math.min(0.95, baseRate); // Cap at 95%
+        // Linear demand: every +10% on price loses 8% of would-be buyers
+        // (and -10% gains 8%). Gives a real profit-maximizing price
+        // (~1.2-1.35x base depending on the food's margin) instead of
+        // "always charge the max".
+        const priceFactor = Math.max(0.1, 1 - 0.8 * (priceMult - 1.0));
+        const rate = Math.min(0.95, baseRate) * priceFactor;
+
+        return Math.max(0.1, Math.min(0.98, rate)); // Clamp 10%-98%
     }
 
     // --- Live economics helpers (used by the pricing panel) -----------------
@@ -302,7 +336,10 @@ class BusinessLogic {
             const unitCost = (supplier.basePrice / 10) * tierMult * marketMult;
             cost += units * unitCost;
         });
-        return cost + 0.4; // disposables/packaging/gas
+        // Disposables/packaging/gas — scaled by difficulty like every other
+        // operating cost in calculateDailyCosts.
+        const costMult = GameData.getDifficultySettings(setup.difficulty).costMultiplier;
+        return cost + 0.4 * costMult;
     }
 
     // Rough daily-sales projection used for break-even allocation. Assumes a
@@ -325,6 +362,7 @@ class BusinessLogic {
         let walkUps = 14;
         walkUps *= (location?.modifiers?.customerBase || 1.0);
         walkUps *= difficulty.customerMultiplier;
+        walkUps *= this.getFoodAppeal();
         if (businessType === 'restaurant') walkUps *= 1.8;
         else if (businessType === 'chain') walkUps *= 3.0;
 
@@ -335,7 +373,7 @@ class BusinessLogic {
             ? employees.reduce((s, e) => s + GameData.getEmployeeBenefitMultiplier(e), 0) / empCount
             : 1;
         const employeeBonus = empCount > 0 ? Math.pow(empCount, 0.7) * 3 * avgEmpMult : 0;
-        const reputationBonus = this.gameState.reputation / 50;
+        const reputationBonus = GameData.getReputationCustomerBonus(this.gameState.reputation);
         let marketingBonus = 0;
         if (this.gameState.marketing.hasCameraSetup) {
             marketingBonus = this.gameState.marketing.followers / 150;
@@ -370,7 +408,9 @@ class BusinessLogic {
 
         const monthly = rent + fixed.vehiclePayment + fixed.businessLicense
             + fixed.foodPermit + fixed.insurance + employeeMonthly + marketing;
-        return monthly / 30;
+        // Same difficulty multiplier calculateDailyCosts charges.
+        const costMult = GameData.getDifficultySettings(this.gameState.setup.difficulty).costMultiplier;
+        return (monthly / 30) * costMult;
     }
 
     // Minimum price that covers per-sale cost AND a fair share of fixed costs
@@ -692,10 +732,12 @@ class BusinessLogic {
 
     // Calculate reputation changes — can go negative on bad days.
     calculateReputationChange(revenue, costs) {
-        let reputationChange = Math.floor(revenue.actualSales / 5);
+        // Square-root growth: busier days still earn more reputation, but
+        // with diminishing returns (4 sales → +1, 16 → +2, 36 → +3, 64 → +4).
+        let reputationChange = Math.floor(Math.sqrt(revenue.actualSales) / 2);
 
         if (revenue.conversionRate > 0.8) {
-            reputationChange += 2;
+            reputationChange += 1;
         }
 
         const netProfit = revenue.totalRevenue - costs.totalCosts;
@@ -883,14 +925,17 @@ class BusinessLogic {
         }
         if (event.tip !== undefined) {
             this.gameState.addMoney(event.tip);
+            this.gameState.logOtherCash(
+                `${event.icon || ''} ${event.tip >= 0 ? 'Customer tip' : 'Comped a customer'}`.trim(),
+                event.tip);
         }
         if (event.cost !== undefined) {
-            this.gameState.spendMoney(Math.min(event.cost, this.gameState.money));
+            this.gameState.spendMoney(Math.min(event.cost, this.gameState.money), `${event.icon || '⚠️'} Unexpected expense`);
         }
         if (event.repairCost) {
             const type = this.gameState.business.type;
             const amt = type === 'chain' ? 3500 : type === 'restaurant' ? 2000 : 800;
-            this.gameState.spendMoney(Math.min(amt, this.gameState.money));
+            this.gameState.spendMoney(Math.min(amt, this.gameState.money), '🔧 Equipment repair');
         }
         if (event.followers !== undefined && this.gameState.marketing.hasCameraSetup) {
             this.gameState.addFollowers(event.followers);
@@ -946,7 +991,7 @@ class BusinessLogic {
             return { success: false, message: `Not enough money. Need $${next.cost.toLocaleString()}` };
         }
 
-        this.gameState.spendMoney(next.cost);
+        this.gameState.spendMoney(next.cost, '🎓 Staff training');
         this.gameState.startEmployeeTraining(employeeIndex, next.targetLevel, this.gameState.day);
 
         const data = GameData.getEmployeeType(emp.type);
@@ -981,14 +1026,16 @@ class BusinessLogic {
         }
 
         // Hire the employee
-        this.gameState.spendMoney(empData.salary);
+        this.gameState.spendMoney(empData.salary, `🧑‍🍳 Hired ${empData.name} (month 1 pay)`);
         this.gameState.addEmployee({
             type: employeeType,
             salary: empData.salary,
-            hiredDay: this.gameState.day
+            hiredDay: this.gameState.day,
+            // First month paid up front — daily payroll starts after it.
+            prepaidUntil: this.gameState.day + 30
         });
-        
-        return { success: true, message: `Successfully hired ${empData.name}!` };
+
+        return { success: true, message: `Hired a ${empData.name} — first month's pay ($${empData.salary.toLocaleString()}) paid up front.` };
     }
 
     // Purchase an upgrade
@@ -997,7 +1044,7 @@ class BusinessLogic {
         if (!upgradeData) return false;
 
         if (this.canAfford(upgradeData.cost) && !this.gameState.upgrades[upgradeType]) {
-            this.gameState.spendMoney(upgradeData.cost);
+            this.gameState.spendMoney(upgradeData.cost, `🛠️ ${upgradeData.name}`);
             this.gameState.purchaseUpgrade(upgradeType);
             return true;
         }
@@ -1010,8 +1057,12 @@ class BusinessLogic {
         if (!marketingData) return false;
 
         if (this.canAfford(marketingData.cost)) {
-            this.gameState.spendMoney(marketingData.cost);
+            this.gameState.spendMoney(marketingData.cost, `📣 ${marketingData.name}`);
             this.gameState.purchaseMarketing(marketingType);
+            // Recurring ads: the purchase pays month one; daily billing starts after.
+            if (marketingData.recurring) {
+                this.gameState.marketing.adsPrepaidUntil = this.gameState.day + 30;
+            }
             return true;
         }
         return false;

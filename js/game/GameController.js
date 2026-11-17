@@ -178,10 +178,10 @@ class GameController {
 
         if (choice.id === 'bribe') {
             const cost = choice.costByType[businessType];
-            this.gameState.spendMoney(Math.min(cost, this.gameState.money));
+            this.gameState.spendMoney(Math.min(cost, this.gameState.money), '🕵️ Inspector bribe');
             if (Math.random() < choice.catchChance) {
                 const caughtCost = choice.caughtCostByType[businessType];
-                this.gameState.spendMoney(Math.min(caughtCost, this.gameState.money));
+                this.gameState.spendMoney(Math.min(caughtCost, this.gameState.money), '🚨 Bribe fallout');
                 this.gameState.addReputation(choice.caughtRepPenalty);
                 message = `The bribe didn't land well — word got out, and it cost you $${caughtCost} and some reputation.`;
                 icon = '🚨';
@@ -198,7 +198,7 @@ class GameController {
             }
         } else {
             const cost = choice.costByType[businessType];
-            this.gameState.spendMoney(Math.min(cost, this.gameState.money));
+            this.gameState.spendMoney(Math.min(cost, this.gameState.money), '🕵️ Health inspection fixes');
             message = `Paid $${cost} to fix things up before the inspector left — clean record.`;
         }
 
@@ -213,6 +213,11 @@ class GameController {
         try {
             // Process daily business operations
             const businessResults = this.businessLogic.processDailyBusiness();
+
+            // Check achievements before the report opens so any reward lands in
+            // today's ledger instead of showing up as unexplained cash.
+            this.checkAchievements();
+            this.attachOtherCashToLatestDay();
 
             // Update UI with results
             this.uiManager.updateDailySummary(businessResults);
@@ -247,8 +252,6 @@ class GameController {
                 });
             }
 
-            // Check for achievements
-            this.checkAchievements();
             
             // Check for game over conditions
             this.checkGameOver();
@@ -376,7 +379,7 @@ class GameController {
             return;
         }
 
-        this.gameState.spendMoney(totalCost);
+        this.gameState.spendMoney(totalCost, '🛒 Supplies bought');
         this.gameState.addInventory(supplierType, qty);
         this.gameState.incrementSupplierOrders(supplierType);
 
@@ -461,7 +464,7 @@ class GameController {
             );
 
             if (confirmUpgrade) {
-                this.gameState.spendMoney(cost);
+                this.gameState.spendMoney(cost, '🏢 Opened a restaurant');
                 this.gameState.upgradeBusiness('restaurant');
                 this.uiManager.showNotification('Congratulations! You now own a restaurant!', 'success');
                 this.uiManager.updateBusinessProgression();
@@ -491,7 +494,7 @@ class GameController {
             );
 
             if (confirmUpgrade) {
-                this.gameState.spendMoney(cost);
+                this.gameState.spendMoney(cost, '🏙️ Expanded to a chain');
                 this.gameState.upgradeBusiness('chain');
                 this.uiManager.showNotification('Amazing! You now own a restaurant chain!', 'success');
                 this.uiManager.updateBusinessProgression();
@@ -501,7 +504,8 @@ class GameController {
 
     checkAchievements() {
         // Check first employee achievement
-        if (this.gameState.employees.length >= 1 && !this.hasAchievement('firstEmployee')) {
+        // The starting cook + cashier don't count — only a hire the player made.
+        if (this.gameState.employees.some(e => !e.starter) && !this.hasAchievement('firstEmployee')) {
             this.unlockAchievement('firstEmployee');
         }
 
@@ -539,6 +543,16 @@ class GameController {
         });
     }
 
+    // Move non-sales cash (rewards, tips, tutorial bonus) into the day report
+    // just written, and refresh its cash snapshot to match the real balance.
+    attachOtherCashToLatestDay() {
+        const hist = this.gameState.history || [];
+        const latest = hist[hist.length - 1];
+        if (!latest) return;
+        latest.otherCash = (latest.otherCash || []).concat(this.gameState.takeOtherCash());
+        if (latest.snapshot) latest.snapshot.money = Math.round(this.gameState.money);
+    }
+
     hasAchievement(achievementId) {
         // Simple achievement tracking - could be moved to GameState
         const unlockedAchievements = JSON.parse(localStorage.getItem('foodEmpireAchievements') || '[]');
@@ -556,6 +570,7 @@ class GameController {
 
         // Give reward
         this.gameState.addMoney(achievement.reward);
+        this.gameState.logOtherCash(`🏆 Achievement: ${achievement.name}`, achievement.reward);
         
         // Show notification
         this.uiManager.showNotification(

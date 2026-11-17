@@ -3,18 +3,17 @@ main = "feedback.js"
 compatibility_date = "2026-04-01"
 
 # Public-facing variables (NOT secrets — those go in `wrangler secret put`).
-# Loosen ALLOWED_ORIGIN to '*' during local dev/testing; tighten to the prod
-# host once the endpoint URL is wired into FeedbackManager.js.
+# Comma-separated origins allowed to POST; anything else gets 403.
+# localhost:8080 is the documented local dev server (python -m http.server 8080).
 [vars]
-ALLOWED_ORIGIN = "*"
+ALLOWED_ORIGIN = "https://foodempiretycoon.com,https://www.foodempiretycoon.com,http://localhost:8080"
 
 # Secrets (set with the CLI — they don't live in source):
 #   wrangler secret put DISCORD_WEBHOOK_URL
 #
-# Routes: leave commented for the *.workers.dev URL during initial setup.
-# Once you confirm it works, optionally bind to a custom subdomain or path
-# pattern under the existing zone — see worker/README.md.
-#
-# [[routes]]
-# pattern = "feedback.foodempiretycoon.com"
-# custom_domain = true
+# Served on a custom subdomain of the existing zone. `custom_domain = true`
+# makes Cloudflare create the DNS record + certificate on deploy, so no
+# workers.dev subdomain is needed (that was the 2026-04 blocker).
+[[routes]]
+pattern = "feedback.foodempiretycoon.com"
+custom_domain = true

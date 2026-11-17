@@ -53,9 +53,10 @@
     }
     </script>
 
-    <link rel="stylesheet" href="css/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=0.33.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&family=Press+Start+2P&family=Space+Grotesk:wght@400..700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
@@ -197,15 +198,15 @@
                     <div class="difficulty-options">
                         <button class="arcade-button difficulty-option" data-difficulty="easy">
                             <h4>Easy</h4>
-                            <p>More starting money, lower costs</p>
+                            <p>$7,000 to start · costs −15% · busier opening week</p>
                         </button>
                         <button class="arcade-button difficulty-option" data-difficulty="normal">
                             <h4>Normal</h4>
-                            <p>Balanced gameplay</p>
+                            <p>$5,000 to start · standard costs · the intended grind</p>
                         </button>
                         <button class="arcade-button difficulty-option" data-difficulty="hard">
                             <h4>Hard</h4>
-                            <p>Less starting money, higher costs</p>
+                            <p>$3,000 to start · costs +20% · swinging supplier prices, no hints</p>
                         </button>
                     </div>
                 </div>
@@ -221,7 +222,7 @@
                     </div>
                     <div class="review-buttons">
                         <button class="arcade-button" id="startOver">Start Over</button>
-                        <button class="arcade-button" id="beginGame">Begin Game</button>
+                        <button class="arcade-button primary" id="beginGame">Begin Game</button>
                     </div>
                 </div>
             </div>
@@ -232,15 +233,15 @@
             <div class="game-header">
                 <div class="game-stats">
                     <div class="stat-item">
-                        <span class="stat-label">Money:</span>
+                        <span class="stat-label">Cash</span>
                         <span id="money" class="stat-value">$10,000</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Reputation:</span>
+                        <span class="stat-label">Reputation</span>
                         <span id="reputation" class="stat-value">0</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Day:</span>
+                        <span class="stat-label">Day</span>
                         <span id="day" class="stat-value">1</span>
                     </div>
                 </div>
@@ -265,10 +266,10 @@
                         <div class="business-info">
                             <div class="business-status arcade-border">
                                 <h3>Current Status</h3>
-                                <p>Name: <span id="businessNameDisplay"></span></p>
-                                <p>Type: <span id="businessType">Food Truck</span></p>
-                                <p>Location: <span id="businessLocation"></span></p>
-                                <p>Daily Customers: <span id="dailyCustomers">0</span></p>
+                                <p><span class="label">Name</span> <span id="businessNameDisplay"></span></p>
+                                <p><span class="label">Type</span> <span id="businessType">Food Truck</span></p>
+                                <p><span class="label">Location</span> <span id="businessLocation"></span></p>
+                                <p><span class="label">Customers yesterday</span> <span id="dailyCustomers">0</span></p>
                             </div>
                             <div class="business-actions">
                                 <button class="action-button arcade-button primary" id="nextDay">Next Day</button>
@@ -549,6 +550,7 @@
                     <div class="feedback-field">
                         <label for="feedbackName">Name or contact <span class="muted">(optional — leave blank to stay anonymous)</span></label>
                         <input type="text" id="feedbackName" maxlength="120" placeholder="email, Discord handle, or just a name">
+                        <input type="text" id="feedbackWebsite" name="website" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true">
                     </div>
                     <p class="feedback-context-note muted">A snapshot of your current game (day, business type, cash, difficulty) is attached to help diagnose bugs. No save data, no personal info.</p>
                 </div>
@@ -592,15 +594,15 @@
         </div>
     </div>
     <!-- Game Modules -->
-    <script src="js/modules/GameData.js"></script>
-    <script src="js/modules/GameState.js"></script>
-    <script src="js/modules/TutorialManager.js"></script>
-    <script src="js/modules/SoundManager.js"></script>
-    <script src="js/game/BusinessLogic.js"></script>
-    <script src="js/ui/UIManager.js"></script>
-    <script src="js/ui/SetupManager.js"></script>
-    <script src="js/ui/FeedbackManager.js"></script>
-    <script src="js/game/GameController.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/modules/GameData.js?v=0.33.0"></script>
+    <script src="js/modules/GameState.js?v=0.33.0"></script>
+    <script src="js/modules/TutorialManager.js?v=0.33.0"></script>
+    <script src="js/modules/SoundManager.js?v=0.33.0"></script>
+    <script src="js/game/BusinessLogic.js?v=0.33.0"></script>
+    <script src="js/ui/UIManager.js?v=0.33.0"></script>
+    <script src="js/ui/SetupManager.js?v=0.33.0"></script>
+    <script src="js/ui/FeedbackManager.js?v=0.33.0"></script>
+    <script src="js/game/GameController.js?v=0.33.0"></script>
+    <script src="js/main.js?v=0.33.0"></script>
 </body>
 </html>

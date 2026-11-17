@@ -4,45 +4,33 @@ Cloudflare Worker that receives feedback POSTs from the in-game modal and
 forwards them to a Discord webhook. No database, no auth UI — Discord is the
 record AND the admin view.
 
-## Status (resume here — paused 2026-04-30)
+## Status (2026-11-17)
 
-Mid-deploy. Already done on this machine:
+**Live** at `https://feedback.foodempiretycoon.com` (deployed + smoke-tested 2026-11-17). Changes since the April attempt:
 
-- Wrangler installed via `npx` (global `wrangler` is not on PATH — use `npx wrangler …`)
-- Authenticated against the Cloudflare account (`npx wrangler whoami` confirms)
-- `DISCORD_WEBHOOK_URL` secret uploaded (piped via stdin to keep it out of shell history)
-- Worker `food-empire-feedback` auto-created and code uploaded — `wrangler deploy` runs cleanly up to publish
+- **Endpoint:** `https://feedback.foodempiretycoon.com` — `[[routes]]` with
+  `custom_domain = true` is now on in `wrangler.toml`, so no `workers.dev`
+  subdomain is needed (that was the April blocker). `FEEDBACK_ENDPOINT` in
+  `js/ui/FeedbackManager.js` already points here.
+- **CORS:** `ALLOWED_ORIGIN` is a comma-separated allowlist (prod, www, and
+  `http://localhost:8080`). Other origins — and requests with no `Origin`
+  header, like plain curl — get 403.
+- **Abuse guards:** hidden `website` honeypot field (filled = silently
+  dropped), `allowed_mentions: { parse: [] }` so player text can't ping
+  `@everyone`, and player IPs are no longer posted to Discord (country only).
+- **Wrangler:** the latest Wrangler needs Node 22+; this machine has Node 20.
+  Use the pinned version: `npx wrangler@4.86.0 ...`.
 
-**Blocked on a one-time account gate:** this Cloudflare account has no `workers.dev`
-subdomain registered, so the deploy has nowhere to publish. Pick one path to resume:
+### Redeploy / rotate (from `worker/`)
 
-### Path A — Register a `workers.dev` subdomain (simplest, ~30s)
-
-1. Open [https://dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → onboarding (the deploy error prints the exact link)
-2. Pick a subdomain (e.g. `carsoncaplan`). Worker URL becomes `https://food-empire-feedback.<subdomain>.workers.dev`
-3. From `worker/`: `npx wrangler deploy`
-4. Skip to "Wire the URL into the game" below
-
-### Path B — Bind a custom subdomain on the existing zone
-
-Cleaner-looking forever, but pins the endpoint to a specific subdomain on `foodempiretycoon.com`.
-
-1. In `wrangler.toml`, uncomment the `[[routes]]` block:
-   ```toml
-   [[routes]]
-   pattern = "feedback.foodempiretycoon.com"
-   custom_domain = true
-   ```
-   `custom_domain = true` makes Cloudflare auto-create the DNS record + provision SSL — no manual DNS work.
-2. From `worker/`: `npx wrangler deploy` (cert provisioning takes ~30s)
-3. Endpoint becomes `https://feedback.foodempiretycoon.com`
-
-### After whichever path
-
-1. **Wire the URL into the game** — replace `FEEDBACK_ENDPOINT` in `js/ui/FeedbackManager.js` with the deployed URL
-2. **Smoke-test** with the curl command in the Testing section below
-3. **Tighten CORS** — flip `ALLOWED_ORIGIN = "*"` → `"https://foodempiretycoon.com"` in `wrangler.toml`, then `npx wrangler deploy` once more
-4. **Rotate the webhook** — the original URL was pasted into chat during this session. Delete + recreate it in Discord, then re-run `printf '%s' '<new-url>' | npx wrangler secret put DISCORD_WEBHOOK_URL` and redeploy
+1. `npx wrangler@4.86.0 login` — the old OAuth session expired.
+2. **Rotate the webhook** (the April one was pasted into a chat session):
+   delete it in Discord, create a new one in the feedback channel, run
+   `npx wrangler@4.86.0 secret put DISCORD_WEBHOOK_URL` and paste the new URL
+   at the hidden prompt (keeps it out of shell history and chat logs).
+3. `npx wrangler@4.86.0 deploy` — creates the DNS record + certificate for
+   `feedback.foodempiretycoon.com` (~30s for the cert).
+4. Smoke-test with the curl command below, then deploy the site.
 
 ## One-time setup
 
@@ -103,8 +91,9 @@ Then `wrangler deploy` again.
 ### Smoke test from the command line
 
 ```bash
-curl -X POST https://food-empire-feedback.<your-account>.workers.dev \
+curl -X POST https://feedback.foodempiretycoon.com \
   -H 'Content-Type: application/json' \
+  -H 'Origin: https://foodempiretycoon.com' \
   -d '{"type":"bug","message":"Test from curl","name":"Carson","context":{"day":12,"money":4500,"businessType":"foodTruck","difficulty":"normal","gameVersion":"0.31.0"}}'
 ```
 
@@ -125,8 +114,7 @@ The Worker forwards a Discord embed with:
 - **Author** — "From: <name>" if provided, else "Anonymous"
 - **Fields** — game state context (day, business type, money, difficulty,
   reputation, employees, viewport, version, country, user agent, path)
-- **Footer** — Cloudflare-detected IP (use sparingly; useful for repeat
-  offenders if abuse becomes a thing)
+- No IP address (removed 2026-11 — country field only)
 
 No save data, no localStorage contents, no personal info beyond what the user
 optionally types into the contact field.
@@ -134,7 +122,7 @@ optionally types into the contact field.
 ## If you want to stop using it
 
 ```bash
-wrangler delete
+npx wrangler@4.86.0 delete
 ```
 
 That deletes the Worker. Set `FEEDBACK_ENDPOINT` to an empty string in the
@@ -143,10 +131,9 @@ silently. Or remove the modal entirely.
 
 ## Future: spam protection
 
-If the channel starts getting junk, layer in **Cloudflare Turnstile**
-(invisible challenge, free) on the modal — see Cloudflare docs. Or rate-limit
-by IP in the Worker using the Cloudflare KV store. Neither is needed at v1
-for the volume we expect.
+Already in place: origin allowlist, honeypot field, no Discord mentions.
+If the channel still gets junk, layer in **Cloudflare Turnstile** (invisible
+challenge, free) on the modal, or a Workers rate-limiting binding keyed by IP.
 
 ## Future: changelog of resolved feedback
 

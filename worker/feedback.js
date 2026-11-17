@@ -9,8 +9,13 @@
  *   DISCORD_WEBHOOK_URL — full Discord webhook URL.
  *
  * Optional env vars (configurable in wrangler.toml [vars]):
- *   ALLOWED_ORIGIN — origin to allow via CORS. Defaults to '*'. Tighten to
- *                    'https://foodempiretycoon.com' once stable.
+ *   ALLOWED_ORIGIN — comma-separated origins allowed to POST (e.g.
+ *                    'https://foodempiretycoon.com,http://localhost:8080').
+ *                    '*' allows any origin. Requests from other origins get 403.
+ *
+ * Abuse guards: a honeypot field (`website`) that real players never see —
+ * filled-in reports are accepted but dropped; Discord mentions are disabled
+ * so a message containing @everyone can't ping the server.
  */
 
 const MAX_MESSAGE = 2000;
@@ -30,16 +35,24 @@ const TYPE_COLOR = {
 
 export default {
     async fetch(request, env) {
-        const allowOrigin = env.ALLOWED_ORIGIN || '*';
+        const allowed = (env.ALLOWED_ORIGIN || '*').split(',').map(s => s.trim()).filter(Boolean);
+        const origin = request.headers.get('Origin') || '';
+        const anyOrigin = allowed.includes('*');
+        const originOk = anyOrigin || allowed.includes(origin);
         const corsHeaders = {
-            'Access-Control-Allow-Origin': allowOrigin,
+            'Access-Control-Allow-Origin': anyOrigin ? '*' : (originOk ? origin : allowed[0]),
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type',
             'Access-Control-Max-Age': '86400',
+            'Vary': 'Origin',
         };
 
         if (request.method === 'OPTIONS') {
             return new Response(null, { status: 204, headers: corsHeaders });
+        }
+
+        if (!originOk) {
+            return jsonResponse({ error: 'Origin not allowed' }, 403, corsHeaders);
         }
 
         if (request.method !== 'POST') {
@@ -62,11 +75,17 @@ export default {
             return jsonResponse({ error: validation.error }, 400, corsHeaders);
         }
 
+        // Honeypot filled → almost certainly a bot. Pretend success, drop it.
+        if (payload.website) {
+            return jsonResponse({ ok: true }, 200, corsHeaders);
+        }
+
         const embed = buildEmbed(payload, request);
         const discordRes = await fetch(env.DISCORD_WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ embeds: [embed] }),
+            // No @everyone / @here / role / user pings from player text.
+            body: JSON.stringify({ embeds: [embed], allowed_mentions: { parse: [] } }),
         });
 
         if (!discordRes.ok) {
@@ -103,7 +122,7 @@ function buildEmbed(p, request) {
     const label = TYPE_LABEL[type] || TYPE_LABEL.other;
     const color = TYPE_COLOR[type] || TYPE_COLOR.other;
     const ctx = p.context || {};
-    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    // Country only — player IP addresses aren't posted to Discord.
     const country = request.headers.get('CF-IPCountry') || '??';
 
     const fields = [];
@@ -145,7 +164,6 @@ function buildEmbed(p, request) {
             ? { name: `From: ${String(p.name).slice(0, MAX_NAME)}` }
             : { name: 'Anonymous' },
         fields,
-        footer: { text: `IP ${ip}` },
         timestamp: ctx.timestamp || new Date().toISOString(),
     };
 }

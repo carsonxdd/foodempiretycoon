@@ -28,7 +28,7 @@
     --s-2xl: 3rem;
 
     /* Type scale */
-    --t-xs:  0.75rem;
+    --t-xs:  0.8125rem;
     --t-sm:  0.875rem;
     --t-md:  1rem;
     --t-lg:  1.25rem;
@@ -49,9 +49,12 @@
     --t-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
     --t-slow:   360ms cubic-bezier(0.4, 0, 0.2, 1);
 
-    /* Fonts */
-    --f-pixel: 'Press Start 2P', monospace;
-    --f-body:  'VT323', 'Menlo', monospace;
+    /* Fonts — Press Start 2P is the logo only; Pixelify Sans carries the
+       retro feel on headings/buttons/labels while staying readable; Space
+       Grotesk is the body face (tabular digits keep money columns aligned). */
+    --f-logo:  'Press Start 2P', monospace;
+    --f-pixel: 'Pixelify Sans', 'Press Start 2P', monospace;
+    --f-body:  'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 * {
@@ -66,9 +69,15 @@ html {
 
 body {
     font-family: var(--f-body);
-    background: var(--bg);
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background:
+        radial-gradient(1200px 600px at 50% -200px, rgba(255, 202, 88, 0.06), transparent 70%),
+        var(--bg);
     color: var(--text);
-    line-height: 1.55;
+    line-height: 1.6;
     min-height: 100vh;
     overflow-x: hidden;
     position: relative;
@@ -95,15 +104,16 @@ body::before {
 
 h1, h2, h3, h4 {
     font-family: var(--f-pixel);
+    font-weight: 600;
     color: var(--amber);
-    line-height: 1.3;
-    letter-spacing: 1px;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
 }
 
 h1 { font-size: var(--t-3xl); }
-h2 { font-size: var(--t-xl); }
-h3 { font-size: var(--t-lg); color: var(--blue); }
-h4 { font-size: var(--t-md); color: var(--blue); }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.375rem; color: var(--blue); }
+h4 { font-size: 1.0625rem; color: var(--blue); }
 
 p, li {
     font-size: var(--t-md);
@@ -138,6 +148,10 @@ header {
 }
 
 header h1 {
+    font-family: var(--f-logo);
+    font-weight: 400;
+    font-size: clamp(1.5rem, 5vw, 3rem);
+    letter-spacing: 1px;
     color: var(--amber);
     text-shadow: 2px 2px 0 var(--coral);
     margin-bottom: var(--s-sm);
@@ -169,7 +183,9 @@ header h1 {
 
 .tagline {
     font-family: var(--f-body);
-    font-size: var(--t-lg);
+    font-size: 1.125rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
     color: var(--blue);
 }
 
@@ -530,8 +546,9 @@ section h2 { margin-bottom: var(--s-md); }
 /* ============================== Landing page ============================== */
 
 .story-intro p {
-    font-size: var(--t-lg);
-    line-height: 1.7;
+    font-size: 1.125rem;
+    line-height: 1.75;
+    max-width: 68ch;
 }
 
 .game-objectives ul { list-style: none; }
@@ -539,8 +556,8 @@ section h2 { margin-bottom: var(--s-md); }
     padding-left: var(--s-lg);
     margin-bottom: var(--s-sm);
     position: relative;
-    font-size: var(--t-lg);
-    line-height: 1.5;
+    font-size: var(--t-md);
+    line-height: 1.6;
 }
 .game-objectives li::before {
     content: '▸';
@@ -571,22 +588,23 @@ section h2 { margin-bottom: var(--s-md); }
 
 .feature-card h3 {
     color: var(--amber);
-    font-size: var(--t-sm);
+    font-size: 1.125rem;
     margin-bottom: var(--s-xs);
 }
 
 .feature-card p {
     color: var(--text-muted);
-    font-size: var(--t-lg);
-    line-height: 1.5;
+    font-size: 0.9375rem;
+    line-height: 1.6;
 }
 
 /* ============================== Buttons ============================== */
 
 .arcade-button, button {
     font-family: var(--f-pixel);
-    font-size: var(--t-xs);
-    letter-spacing: 1px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     padding: var(--s-sm) var(--s-md);
     min-height: 44px;
@@ -632,8 +650,9 @@ button:disabled {
     background: var(--amber);
     color: var(--bg);
     border-color: var(--amber);
-    font-size: var(--t-sm);
+    font-size: 1.0625rem;
     padding: var(--s-md) var(--s-lg);
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), 0 0 18px rgba(255, 202, 88, 0.18);
 }
 
 .arcade-button.primary:hover:not(:disabled),
@@ -750,7 +769,7 @@ select:focus {
 .setup-step h3 {
     margin-bottom: var(--s-md);
     color: var(--blue);
-    font-size: var(--t-md);
+    font-size: 1.25rem;
 }
 
 /* Business-name step: bigger input, breathing room before the Next button */
@@ -770,6 +789,12 @@ select:focus {
     margin-bottom: var(--s-md);
 }
 
+/* Three difficulty cards read best side by side (stacked on phones). */
+.difficulty-options { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 560px) {
+    .difficulty-options { grid-template-columns: 1fr; }
+}
+
 .food-option,
 .difficulty-option {
     flex-direction: column;
@@ -785,7 +810,7 @@ select:focus {
 .food-option h4,
 .difficulty-option h4 {
     color: var(--amber);
-    font-size: var(--t-sm);
+    font-size: 1.125rem;
     font-family: var(--f-pixel);
     margin-bottom: var(--s-2xs);
 }
@@ -793,7 +818,8 @@ select:focus {
 .food-option p,
 .difficulty-option p {
     font-family: var(--f-body);
-    font-size: var(--t-md);
+    font-size: 0.9375rem;
+    line-height: 1.45;
     color: var(--text-muted);
     font-weight: normal;
 }
@@ -852,7 +878,7 @@ select:focus {
 
 .location-card h4 {
     color: var(--amber);
-    font-size: var(--t-sm);
+    font-size: 1.125rem;
     margin-bottom: var(--s-2xs);
 }
 
@@ -903,7 +929,9 @@ select:focus {
 .game-interface.hidden { display: none; }
 
 .game-header {
-    background: var(--surface);
+    background: rgba(21, 24, 40, 0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--border);
     border-radius: var(--r-md);
     padding: var(--s-md) var(--s-lg);
@@ -930,18 +958,21 @@ select:focus {
     font-size: var(--t-xs);
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.12em;
 }
 
 .stat-value {
-    font-size: var(--t-lg);
+    font-size: 1.5rem;
+    line-height: 1.2;
     color: var(--amber);
-    font-weight: bold;
+    font-weight: 700;
+    letter-spacing: -0.01em;
 }
+#money.stat-value { color: var(--green); }
 
 /* Reputation tier badge — sits in the existing #reputation stat-value slot */
 .rep-tier {
-    font-size: var(--t-md);
+    font-size: 1.125rem;
     color: var(--amber);
     font-weight: bold;
     margin-right: var(--s-2xs);
@@ -993,7 +1024,7 @@ select:focus {
     text-align: left;
     padding: var(--s-sm) var(--s-md);
     min-height: 44px;
-    font-size: var(--t-xs);
+    font-size: 0.9375rem;
     background: transparent;
     border-color: transparent;
 }
@@ -1033,7 +1064,7 @@ select:focus {
 
 .game-tab h2 {
     margin-bottom: var(--s-md);
-    font-size: var(--t-xl);
+    font-size: 2rem;
 }
 
 /* ============================== Business tab ============================== */
@@ -1055,16 +1086,40 @@ select:focus {
 
 .business-status h3 { margin-bottom: var(--s-sm); }
 .business-status p {
-    margin-bottom: var(--s-xs);
-    font-size: var(--t-lg);
-    line-height: 1.7;
-}
-
-.business-actions {
     display: flex;
-    flex-direction: column;
-    gap: var(--s-xs);
+    justify-content: space-between;
+    gap: var(--s-md);
+    padding: var(--s-xs) 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: var(--t-md);
+    line-height: 1.5;
 }
+.business-status p:last-child { border-bottom: 0; }
+.business-status p .label { color: var(--text-muted); }
+.business-status p span:last-child { font-weight: 600; text-align: right; }
+
+/* Next Day is the one action you take every turn — make it unmissable.
+   Everything else is a quiet two-column toolbar under it. */
+.business-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-xs);
+    align-content: start;
+}
+.business-actions #nextDay {
+    grid-column: 1 / -1;
+    min-height: 64px;
+    font-size: 1.25rem;
+}
+.business-actions .action-button:not(#nextDay) {
+    font-size: 0.8125rem;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+/* Reflow the toolbar: Save/Load, Tutorial/Sound, then full-width rows. */
+.business-actions #soundToggle   { order: 1; }
+.business-actions #openFeedback  { order: 2; grid-column: 1 / -1; }
+.business-actions #restartGame   { order: 3; grid-column: 1 / -1; }
 
 .action-button { width: 100%; }
 
@@ -1168,7 +1223,7 @@ select:focus {
 }
 
 .daily-summary p {
-    font-size: var(--t-lg);
+    font-size: var(--t-md);
     margin-bottom: var(--s-xs);
     line-height: 1.65;
 }
@@ -1197,7 +1252,7 @@ select:focus {
 .daily-events h4,
 .customer-feedback h4,
 .marketing-stats h4 {
-    font-size: var(--t-sm);
+    font-size: 1rem;
     margin-bottom: var(--s-xs);
     color: var(--blue);
     text-transform: uppercase;
@@ -1225,7 +1280,7 @@ select:focus {
     border-radius: var(--r-md);
     padding: var(--s-sm) var(--s-md);
     margin-bottom: var(--s-sm);
-    font-size: var(--t-lg);
+    font-size: var(--t-md);
     line-height: 1.6;
     animation: bubbleIn var(--t-normal) both;
     max-width: 92%;
@@ -1289,7 +1344,7 @@ select:focus {
 }
 
 .inventory-panel h3 {
-    font-size: var(--t-md);
+    font-size: 1.25rem;
     margin-bottom: var(--s-sm);
 }
 
@@ -1309,7 +1364,7 @@ select:focus {
 }
 
 .recipe-panel h3 {
-    font-size: var(--t-md);
+    font-size: 1.25rem;
     margin-bottom: var(--s-sm);
 }
 
@@ -1654,7 +1709,7 @@ select:focus {
 
 .pricing-panel h3,
 .finances-panel h3 {
-    font-size: var(--t-md);
+    font-size: 1.25rem;
     margin-bottom: var(--s-sm);
 }
 
@@ -1786,7 +1841,7 @@ select:focus {
 
 .employee-card h3 {
     margin-bottom: var(--s-sm);
-    font-size: var(--t-md);
+    font-size: 1.125rem;
 }
 
 .employee-item {
@@ -1821,7 +1876,7 @@ select:focus {
     border: 1px solid var(--amber);
     color: var(--amber);
     border-radius: var(--r-sm);
-    font-size: 10px;
+    font-size: var(--t-xs);
     font-weight: bold;
     letter-spacing: 0.5px;
 }
@@ -1839,14 +1894,14 @@ select:focus {
 
 .training-status {
     color: var(--blue);
-    font-size: 10px;
+    font-size: var(--t-sm);
     font-style: italic;
 }
 
 .fire-button {
     padding: var(--s-2xs) var(--s-xs) !important;
     min-height: 28px !important;
-    font-size: 10px !important;
+    font-size: var(--t-xs) !important;
     background: var(--coral) !important;
     color: var(--bg) !important;
     border-color: var(--coral) !important;
@@ -1855,7 +1910,7 @@ select:focus {
 .train-button {
     padding: var(--s-2xs) var(--s-xs) !important;
     min-height: 28px !important;
-    font-size: 10px !important;
+    font-size: var(--t-xs) !important;
     line-height: 1.3 !important;
     text-align: center;
     background: var(--blue) !important;
@@ -2148,7 +2203,7 @@ select:focus {
 .marketing-card h3,
 .upgrade-card h3 {
     margin-bottom: var(--s-sm);
-    font-size: var(--t-md);
+    font-size: 1.125rem;
 }
 
 /* Marketing / Upgrade / Progression items — grid layout
@@ -2255,7 +2310,7 @@ select:focus {
 }
 
 .news-ticker-panel h3 {
-    font-size: var(--t-md);
+    font-size: 1.25rem;
     margin-bottom: var(--s-sm);
 }
 
@@ -2306,7 +2361,7 @@ select:focus {
 }
 
 .journal-panel h3 {
-    font-size: var(--t-md);
+    font-size: 1.25rem;
     margin-bottom: var(--s-sm);
 }
 
@@ -2517,7 +2572,7 @@ select:focus {
 
 .day-modal-title {
     font-family: var(--f-pixel);
-    font-size: var(--t-md);
+    font-size: 1.25rem;
     color: var(--amber);
     letter-spacing: 1px;
 }
@@ -2552,7 +2607,7 @@ select:focus {
 
 .day-modal-body h4 {
     margin-bottom: var(--s-sm);
-    font-size: var(--t-md);
+    font-size: 1.125rem;
     color: var(--blue);
     letter-spacing: 1px;
 }
@@ -2564,7 +2619,7 @@ select:focus {
 }
 
 .day-modal-body .narrative {
-    font-size: var(--t-lg);
+    font-size: 1.0625rem;
     color: var(--text);
     padding: var(--s-sm) var(--s-md);
     background: var(--surface-2);
@@ -2609,9 +2664,16 @@ select:focus {
 
 .snapshot-tile .value {
     display: block;
-    font-size: var(--t-lg);
+    font-size: 1.125rem;
+    line-height: 1.3;
     color: var(--amber);
-    font-weight: bold;
+    font-weight: 700;
+}
+.snapshot-tile .value .sub {
+    display: block;
+    font-size: var(--t-xs);
+    font-weight: 400;
+    color: var(--text-muted);
 }
 
 .day-modal-footer {
@@ -2800,7 +2862,7 @@ select:focus {
 .tutorial-dot.done   { background: var(--green); }
 
 .tutorial-coach-footer button {
-    font-size: 10px;
+    font-size: var(--t-sm);
     padding: var(--s-2xs) var(--s-xs);
     min-height: 28px;
 }
@@ -2865,16 +2927,24 @@ footer {
 
 @media (max-width: 1024px) {
     .game-content {
-        grid-template-columns: 1fr;
+        /* minmax(0, …) — a plain 1fr column grows to its widest child (the
+           6-button tab row), which pushed the whole game past phone width. */
+        grid-template-columns: minmax(0, 1fr);
     }
     .game-sidebar {
         position: static;
+        min-width: 0;
     }
+    .game-main { min-width: 0; }
     .game-menu {
         flex-direction: row;
         overflow-x: auto;
         gap: var(--s-xs);
+        scrollbar-width: none;
+        -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent);
+                mask-image: linear-gradient(90deg, #000 85%, transparent);
     }
+    .game-menu::-webkit-scrollbar { display: none; }
     .menu-button {
         flex-shrink: 0;
         white-space: nowrap;
@@ -2888,7 +2958,7 @@ footer {
 }
 
 @media (max-width: 768px) {
-    html { font-size: 14px; }
+    /* Keep the 16px root on phones — Space Grotesk reads well at it. */
     .container { padding: var(--s-md) var(--s-sm); }
     header { padding: var(--s-md) 0; }
     .food-options,
@@ -2940,15 +3010,20 @@ footer {
 }
 
 @media (max-width: 480px) {
+    /* Cash + Day side by side, Reputation (badge + bar) full width below. */
     .game-stats {
         grid-template-columns: repeat(2, 1fr);
+        gap: var(--s-sm) var(--s-md);
     }
+    .game-stats .stat-item:nth-child(2) { order: 3; grid-column: 1 / -1; }
+    .stat-value { font-size: 1.25rem; }
+    body:has(#gameInterface:not(.hidden)) .tagline { display: none; }
 }
 
 /* Desktop-only text bumps — location cards, review step readability */
 @media (min-width: 1024px) {
-    .location-card h4 { font-size: var(--t-md); }
-    .location-card p { font-size: var(--t-lg); line-height: 1.6; }
+    .location-card h4 { font-size: 1.25rem; }
+    .location-card p { font-size: var(--t-md); line-height: 1.6; }
     .location-stat { font-size: var(--t-md); }
 
     .review-content {
@@ -2956,7 +3031,7 @@ footer {
         line-height: 2;
     }
     .review-content p {
-        font-size: var(--t-lg);
+        font-size: var(--t-md);
         margin-bottom: var(--s-sm);
     }
 
@@ -2974,10 +3049,105 @@ footer {
     }
     .food-option h4,
     .difficulty-option h4 {
-        font-size: var(--t-md);
+        font-size: 1.25rem;
     }
     .food-option p,
     .difficulty-option p {
         font-size: var(--t-md);
     }
+}
+
+/* ============================== In-game header ==============================
+   Once the game interface is showing, the big landing hero and quote ticker
+   just push the game below the fold. Collapse the hero into a slim title bar
+   and drop the ticker. (:has() — Chrome 105+, Safari 15.4+, Firefox 121+.) */
+body:has(#gameInterface:not(.hidden)) header {
+    padding: var(--s-sm) 0 var(--s-md);
+}
+body:has(#gameInterface:not(.hidden)) .hero-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--s-xs) var(--s-md);
+    padding: var(--s-sm) var(--s-lg);
+}
+body:has(#gameInterface:not(.hidden)) .hero-title {
+    font-size: clamp(1rem, 2.4vw, 1.375rem);
+    margin: 0;
+    animation: none;
+    text-shadow: 2px 2px 0 var(--coral);
+}
+body:has(#gameInterface:not(.hidden)) .tagline {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+}
+body:has(#gameInterface:not(.hidden)) .quote-ticker {
+    display: none;
+}
+
+/* ============================== Day report ledger ==============================
+   Income-statement layout for the day modal's Numbers section: label left,
+   signed amount right, a rule above the operating result, a double rule above
+   the change in cash (which always matches how far the Cash stat moved). */
+.ledger {
+    margin-top: var(--s-sm);
+    font-size: var(--t-sm);
+}
+.ledger-row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-md);
+    padding: 3px 0;
+}
+.ledger-row span:first-child { color: var(--text-muted); }
+.ledger-row span:last-child { font-weight: 600; white-space: nowrap; }
+.ledger-row.subtotal,
+.ledger-row.total {
+    margin-top: var(--s-2xs);
+    padding-top: var(--s-xs);
+    border-top: 1px solid var(--border);
+    font-size: var(--t-md);
+}
+.ledger-row.total { border-top: 3px double var(--border); }
+.ledger-row.subtotal span:first-child,
+.ledger-row.total span:first-child { color: var(--text); font-weight: 600; }
+.ledger-heading {
+    margin-top: var(--s-sm);
+    font-family: var(--f-pixel);
+    font-size: var(--t-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--blue);
+}
+.ledger-foot { margin-top: var(--s-sm); font-size: var(--t-sm); }
+
+/* "Updated since your last visit" — shown in the Resume dialog for saves
+   written by an older release (see GameData.updateNotes / SAVE_VERSION). */
+.resume-update {
+    margin-top: var(--s-md);
+    padding: var(--s-sm) var(--s-md);
+    text-align: left;
+    background: rgba(88, 166, 255, 0.08);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-md);
+    font-size: var(--t-sm);
+}
+.resume-update-title {
+    font-family: var(--f-pixel);
+    font-weight: 600;
+    color: var(--blue);
+    margin-bottom: var(--s-2xs);
+}
+.resume-update ul { padding-left: 1.1em; }
+.resume-update li { font-size: var(--t-sm); margin: 2px 0; }
+.resume-update-foot { margin-top: var(--s-2xs); color: var(--text-muted); font-size: var(--t-xs); }
+
+/* Feedback spam honeypot — off-screen, skipped by keyboard + screen readers. */
+.hp-field {
+    position: absolute !important;
+    left: -10000px !important;
+    width: 1px !important;
+    height: 1px !important;
+    opacity: 0 !important;
 }

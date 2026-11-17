@@ -66,8 +66,8 @@ class GameData {
                 priceMultiplier: 1.08
             },
             description: 'Improves food quality and cooking speed',
-            businessTypes: ['foodTruck', 'restaurant'],
-            maxCount: { foodTruck: 3, restaurant: 8 }
+            businessTypes: ['foodTruck', 'restaurant', 'chain'],
+            maxCount: { foodTruck: 3, restaurant: 8, chain: 16 }
         },
         cashier: {
             name: 'Cashier',
@@ -78,10 +78,10 @@ class GameData {
                 orderAccuracy: 0.15
             },
             description: 'Handles orders and payments efficiently',
-            businessTypes: ['foodTruck', 'restaurant'],
-            maxCount: { foodTruck: 1, restaurant: 3 }
+            businessTypes: ['foodTruck', 'restaurant', 'chain'],
+            maxCount: { foodTruck: 1, restaurant: 3, chain: 6 }
         },
-        // Restaurant-only employees (for future expansion)
+        // Restaurant + chain employees
         chef: {
             name: 'Head Chef',
             salary: 1000,
@@ -92,8 +92,8 @@ class GameData {
                 menuExpansion: true
             },
             description: 'Professional chef for restaurant operations',
-            businessTypes: ['restaurant'],
-            maxCount: { restaurant: 2 }
+            businessTypes: ['restaurant', 'chain'],
+            maxCount: { restaurant: 2, chain: 4 }
         },
         server: {
             name: 'Server',
@@ -104,8 +104,8 @@ class GameData {
                 tipIncome: 75
             },
             description: 'Provides table service for restaurant guests',
-            businessTypes: ['restaurant'],
-            maxCount: { restaurant: 6 }
+            businessTypes: ['restaurant', 'chain'],
+            maxCount: { restaurant: 6, chain: 12 }
         },
         manager: {
             name: 'Manager',
@@ -116,8 +116,8 @@ class GameData {
                 customerSatisfaction: 0.08
             },
             description: 'Manages operations and boosts team performance',
-            businessTypes: ['restaurant'],
-            maxCount: { restaurant: 1 }
+            businessTypes: ['restaurant', 'chain'],
+            maxCount: { restaurant: 1, chain: 2 }
         }
     };
 
@@ -490,6 +490,13 @@ class GameData {
 
     // Returns { name, icon, min, next, progressContribution, progressToNext }.
     // `progressToNext` is 0..1 toward the next tier (1.0 = at/past max).
+    // Extra daily walk-ups from reputation. Saturating curve (approaches +20)
+    // so reputation can't feed sales -> reputation -> sales without limit.
+    // 25 rep ~ +1, 75 ~ +3, 200 ~ +8, 500 ~ +14, 1000 ~ +18.
+    static getReputationCustomerBonus(rep = 0) {
+        return 20 * (1 - Math.exp(-Math.max(0, rep) / 400));
+    }
+
     static getReputationTier(rep = 0) {
         const tiers = this.reputationTiers;
         let current = tiers[0];
@@ -691,7 +698,7 @@ class GameData {
         },
         pizza: {
             name: 'Pizza (slice)',
-            basePrice: 4.50,
+            basePrice: 5.00,
             // Pizza's core is dough + sauce + cheese. Pepperoni is a topping.
             coreRecipe: ['bread', 'vegetables', 'cheese'],
             defaultRecipe: ['bread', 'vegetables', 'cheese'],
@@ -704,7 +711,7 @@ class GameData {
         },
         tacos: {
             name: 'Tacos',
-            basePrice: 3.50,
+            basePrice: 5.00,
             coreRecipe: ['bread', 'meat', 'cheese'],
             defaultRecipe: ['bread', 'meat', 'cheese'],
             coreNames: {
@@ -1078,6 +1085,40 @@ class GameData {
         "Bills came due whether you were here or not.",
     ];
 
+    // ---- Save format versioning -------------------------------------------
+    // Bump SAVE_VERSION whenever a release changes rules that existing saves
+    // were played under, add a step to GameState.migrate(), and add a note
+    // below so returning players see what changed in the Resume dialog.
+    //   1 — everything before 0.33.0 (saves have no saveVersion field)
+    //   2 — 0.33.0: cash ledger, demand curve, damped reputation, $5 tacos/pizza
+    static SAVE_VERSION = 2;
+
+    // Base prices from before a version raised them, so migrate() can keep a
+    // returning player's actual menu price unchanged.
+    static legacyBasePrices = { 2: { tacos: 3.50, pizza: 4.50 } };
+
+    static updateNotes = {
+        2: [
+            'Day reports now list every dollar in and out — the change in cash matches your balance.',
+            'Price matters more: each +10% loses about 8% of buyers. Worth a look at Menu pricing.',
+            'Reputation brings in customers more gradually, and milestone bonuses are smaller.',
+        ],
+    };
+
+    // Notes for every version newer than the save, plus a food-specific line.
+    static getUpdateNotes(savedVersion, foodType) {
+        const notes = [];
+        for (let v = (savedVersion || 1) + 1; v <= this.SAVE_VERSION; v++) {
+            notes.push(...(this.updateNotes[v] || []));
+            const legacy = this.legacyBasePrices[v];
+            if (legacy && legacy[foodType] !== undefined) {
+                const food = this.foodTypes[foodType];
+                notes.push(`${food.name} base price is now $${food.basePrice.toFixed(2)} — your menu price stayed the same.`);
+            }
+        }
+        return notes;
+    }
+
     static getResumeFlavor() {
         return this.resumeFlavor[Math.floor(Math.random() * this.resumeFlavor.length)];
     }
@@ -1253,18 +1294,18 @@ class GameData {
     static achievements = {
         firstEmployee: {
             name: "Team Builder",
-            description: "Hire your first employee",
-            reward: 500
+            description: "Hire your first employee beyond the starting crew",
+            reward: 250
         },
         firstUpgrade: {
             name: "Investor",
             description: "Purchase your first upgrade",
-            reward: 1000
+            reward: 500
         },
         socialMediaStar: {
             name: "Going Viral",
             description: "Reach 1000 social media followers",
-            reward: 2000
+            reward: 1000
         },
         milestone100k: {
             name: "Six Figures",
@@ -1300,25 +1341,25 @@ class GameData {
         repLocalSpot: {
             name: "Local Spot",
             description: "Earn a reputation people start to recognize",
-            reward: 500,
+            reward: 250,
             reputationThreshold: 25,
         },
         repBuzzing: {
             name: "Buzzing",
             description: "Reach Buzzing — the line forms itself now",
-            reward: 1500,
+            reward: 750,
             reputationThreshold: 75,
         },
         repHotSpot: {
             name: "Hot Spot",
             description: "Become the place to eat in this part of town",
-            reward: 4000,
+            reward: 1500,
             reputationThreshold: 200,
         },
         repIconic: {
             name: "Iconic",
             description: "Reach Iconic status — you are the brand",
-            reward: 10000,
+            reward: 3000,
             reputationThreshold: 500,
         },
     };

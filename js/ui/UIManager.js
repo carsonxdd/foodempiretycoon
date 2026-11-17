@@ -133,11 +133,17 @@ class UIManager {
                 // Refresh employee list so training countdowns tick down.
                 this.updateEmployeesList();
                 this.updateStorefrontVisual();
+                // Reputation/regulars move daily, which shifts conversion and
+                // expected volume — keep break-even and recipe numbers current.
+                this.updatePricingPanel();
+                this.updateFinancesPanel();
+                this.updateRecipePanel();
                 break;
             case 'employees':
                 this.updateEmployeesList();
                 this.updateFinancesPanel();
                 this.updatePricingPanel();
+                this.updateRecipePanel();
                 break;
             case 'marketing':
                 this.updateMarketingButtons();
@@ -148,6 +154,8 @@ class UIManager {
             case 'upgrades':
                 this.updateUpgradeButtons();
                 this.updatePricingPanel();
+                this.updateFinancesPanel();
+                this.updateRecipePanel();
                 this.updateStorefrontVisual();
                 break;
             case 'business':
@@ -324,12 +332,57 @@ class UIManager {
         }
     }
 
+    // A day's books as a small income statement: sales minus operating
+    // costs = operating result, then cash that moved outside operations
+    // (supplies, hires, upgrades, bonuses, tips), ending in the change in
+    // cash — which is exactly how much the Cash number moved.
+    buildLedgerHTML(entry, otherCash) {
+        const { revenue, costs, netProfit } = entry;
+        const money = n => `$${Math.round(Math.abs(n)).toLocaleString()}`;
+        const signed = n => `${n >= 0 ? '+' : '−'}${money(n)}`;
+        const row = (label, amount, cls = '') => {
+            const zero = Math.round(amount) === 0;
+            return `
+            <div class="ledger-row ${cls}">
+                <span>${label}</span>
+                <span class="${zero ? 'muted' : amount > 0 ? 'profit' : 'loss'}">${zero ? '$0' : signed(amount)}</span>
+            </div>`;
+        };
+
+        const opRows = [
+            row(`Sales (${revenue.actualSales} × $${revenue.pricePerSale.toFixed(2)})`, revenue.totalRevenue),
+            row('Wages', -costs.employeeCosts),
+            row('Rent', -costs.rentCost),
+            costs.vehicleCost > 0 ? row('Vehicle payment', -costs.vehicleCost) : '',
+            row('License + permit', -(costs.licenseCost + costs.permitCost)),
+            row('Insurance', -costs.insuranceCost),
+            row('Disposables / gas', -costs.ingredientCosts),
+            costs.marketingCosts > 0 ? row('Marketing', -costs.marketingCosts) : '',
+        ].join('');
+
+        const otherTotal = otherCash.reduce((s, c) => s + c.amount, 0);
+        const otherRows = otherCash.length
+            ? `<div class="ledger-heading">Other cash in / out</div>`
+              + otherCash.map(c => row(c.label, c.amount)).join('')
+            : '';
+
+        return `
+            <div class="ledger">
+                ${opRows}
+                ${row('Operating result', netProfit, 'subtotal')}
+                ${otherRows}
+                ${row('Change in cash', netProfit + otherTotal, 'total')}
+            </div>`;
+    }
+
     // Render the content of a single day's recap. Used inside the modal.
     buildDayHTML(entry) {
         const fmt = n => Math.round(n).toLocaleString();
         const { revenue, costs, netProfit, events, feedback, narrative, snapshot } = entry;
         const profitClass = netProfit >= 0 ? 'profit' : 'loss';
         const sign = netProfit >= 0 ? '+' : '-';
+        const otherCash = Array.isArray(entry.otherCash) ? entry.otherCash : [];
+        const otherTotal = otherCash.reduce((sum, c) => sum + c.amount, 0);
 
         let html = `
             <div class="narrative">${narrative || ''}</div>
@@ -345,7 +398,7 @@ class UIManager {
                         <span class="label">Reputation</span>
                         <span class="value">${(() => {
                             const t = GameData.getReputationTier(snapshot.reputation);
-                            return `${t.icon} ${t.name} <span class="muted">· ${snapshot.reputation}</span>`;
+                            return `${t.icon} ${t.name}<span class="sub">${snapshot.reputation} pts</span>`;
                         })()}</span>
                     </div>
                     <div class="snapshot-tile">
@@ -367,22 +420,16 @@ class UIManager {
             <details class="section">
                 <summary style="cursor: pointer; font-size: var(--t-md);">
                     <strong>Numbers:</strong>
-                    <span class="muted">${entry.customers} visitors · ${revenue.actualSales} sales · </span>
-                    <span class="${profitClass}">${sign}$${fmt(Math.abs(netProfit))}</span>
+                    <span class="muted">${entry.customers} ${entry.customers === 1 ? "visitor" : "visitors"} · ${revenue.actualSales} ${revenue.actualSales === 1 ? "sale" : "sales"} · </span>
+                    <span class="muted">operating </span><span class="${profitClass}">${sign}$${fmt(Math.abs(netProfit))}</span>
+                    ${otherCash.length ? (() => {
+                        const change = netProfit + otherTotal;
+                        return `<span class="muted"> · cash </span><span class="${change >= 0 ? 'profit' : 'loss'}">${change >= 0 ? '+' : '-'}$${fmt(Math.abs(change))}</span>`;
+                    })() : ''}
                 </summary>
-                <div style="margin-top: var(--s-sm);">
-                    <p>Revenue: <span class="money">$${fmt(revenue.totalRevenue)}</span></p>
-                    <p>Wages: $${fmt(costs.employeeCosts)}</p>
-                    <p>Rent: $${fmt(costs.rentCost)}</p>
-                    ${costs.vehicleCost > 0 ? `<p>Vehicle payment: $${fmt(costs.vehicleCost)}</p>` : ''}
-                    <p>License + permit: $${fmt(costs.licenseCost + costs.permitCost)}</p>
-                    <p>Insurance: $${fmt(costs.insuranceCost)}</p>
-                    <p>Disposables/gas: $${fmt(costs.ingredientCosts)}</p>
-                    ${costs.marketingCosts > 0 ? `<p>Marketing: $${fmt(costs.marketingCosts)}</p>` : ''}
-                    <hr>
-                    <p>Conversion: ${(revenue.conversionRate * 100).toFixed(0)}% · Avg price: $${revenue.pricePerSale.toFixed(2)}</p>
-                    ${revenue.lostSales > 0 ? `<p class="loss">Lost ${revenue.lostSales} sales to empty inventory</p>` : ''}
-                </div>
+                ${this.buildLedgerHTML(entry, otherCash)}
+                <p class="ledger-foot muted">Conversion ${(revenue.conversionRate * 100).toFixed(0)}% · avg price $${revenue.pricePerSale.toFixed(2)}</p>
+                ${revenue.lostSales > 0 ? `<p class="loss">Lost ${revenue.lostSales} sales to empty inventory</p>` : ''}
             </details>
         `;
 
@@ -578,19 +625,18 @@ class UIManager {
                 addonPriceParts.push(`🥤🍟 +$${GameData.mealBonus.toFixed(2)}`);
             }
             const mult = setup.priceMultiplier || 1.0;
-            price *= mult;
+            // Use the sim's own numbers so this matches what customers pay
+            // and how many actually buy (staff, upgrades, reputation included).
+            const bl = this.businessLogic;
+            const listPrice = price * mult;
+            price = bl ? bl.calculateSellPrice() : listPrice;
+            if (Math.abs(price - listPrice) > 0.005) {
+                addonPriceParts.push(`staff/seating ×${(price / listPrice).toFixed(2)}`);
+            }
 
-            // Conversion preview — uses per-food cores so burgers don't get docked for skipping veg.
-            let conv = 0.7;
             const coresForFood = GameData.getCoreRecipe(setup.foodType);
             const missing = coresForFood.filter(k => !currentRecipe.includes(k)).length;
-            conv -= missing * 0.15;
-            conv -= (mult - 1) * 0.6;
-            currentRecipe.forEach(ing => {
-                const a = GameData.recipeAddons[ing];
-                if (a?.appealBonus) conv += a.appealBonus;
-            });
-            conv = Math.max(0.10, Math.min(0.95, conv));
+            const conv = bl ? bl.calculateConversionRate() : 0.7;
 
             // Per-sale ingredient consumption with labels.
             const consumption = GameData.computeRecipeConsumption(setup);
@@ -656,9 +702,14 @@ class UIManager {
             const display = isFoodCore
                 ? GameData.getCoreDisplay(setup.foodType, key)
                 : { name: supplier.name, icon: supplier.icon };
-            const sub = isFoodCore && display.name !== supplier.name
-                ? `<span class="sublabel">from ${supplier.name}</span>`
-                : (!isFoodCore && supplier.isCore ? `<span class="sublabel">not in recipe</span>` : '');
+            // Non-core categories can still be in use via toppings (lettuce ->
+            // vegetables), so decide "in recipe" from consumption, not the key.
+            let sub = '';
+            if (isFoodCore && display.name !== supplier.name) {
+                sub = `<span class="sublabel">from ${supplier.name}</span>`;
+            } else if (!isFoodCore && supplier.isCore) {
+                sub = `<span class="sublabel">${inUse ? 'used by toppings' : 'not in recipe'}</span>`;
+            }
             return `
                 <div class="inventory-slot ${cls}">
                     <span class="icon">${display.icon}</span>
@@ -1038,8 +1089,12 @@ class UIManager {
         // Is this ingredient currently consumed by the player's recipe?
         const setup = this.gameState.setup;
         const activeRecipe = setup.recipe || [];
-        const inRecipe = activeRecipe.includes(key)
-            || (setup.mealMode && (key === 'drinks' || key === 'sides'));
+        // Use per-sale consumption so a category used only through toppings
+        // (e.g. lettuce draws from vegetables) still counts as in the recipe.
+        const consumption = GameData.computeRecipeConsumption(setup);
+        const inRecipe = (consumption[key] || 0) > 0;
+        const viaToppingsOnly = inRecipe && !activeRecipe.includes(key)
+            && !(setup.mealMode && (key === 'drinks' || key === 'sides'));
         const canAddToRecipe = supplier.isAddon && !activeRecipe.includes(key);
 
         const unitPrice = (supplier.basePrice / 10) * bulk.mult * marketMult * premiumMult;
@@ -1079,7 +1134,7 @@ class UIManager {
         }
 
         const recipeBadge = inRecipe
-            ? '<span class="recipe-status in-recipe">In recipe ✓</span>'
+            ? `<span class="recipe-status in-recipe">${viaToppingsOnly ? 'Used by toppings ✓' : 'In recipe ✓'}</span>`
             : canAddToRecipe
                 ? `<button class="recipe-status-add" data-add-to-recipe="${key}">+ Add to recipe</button>`
                 : '<span class="recipe-status not-in-recipe">Not in recipe</span>';
@@ -1156,7 +1211,18 @@ class UIManager {
         const hist = this.gameState.history || [];
         if (hist.length === 0) return;
         const latest = hist[hist.length - 1];
+        this.updateYesterdayCustomers();
         this.openDayModal(latest.day);
+    }
+
+    // "Customers yesterday" on the Business tab status card.
+    updateYesterdayCustomers() {
+        if (!this.elements.dailyCustomers) return;
+        const hist = this.gameState.history || [];
+        const latest = hist[hist.length - 1];
+        this.elements.dailyCustomers.textContent = latest
+            ? `${latest.customers} (${latest.revenue?.actualSales ?? 0} bought)`
+            : '—';
     }
 
     // Update all displays (useful for initialization and loading)
@@ -1164,6 +1230,7 @@ class UIManager {
         this.updateMoney(this.gameState.money);
         this.updateReputation(this.gameState.reputation);
         this.updateDay(this.gameState.day);
+        this.updateYesterdayCustomers();
         this.updateBusinessInfo();
         this.updateEmployeesList();
         this.updateEmployeeTypeSelect();
@@ -1191,37 +1258,33 @@ class UIManager {
         const setup = this.gameState.setup;
         const mult = setup.priceMultiplier || 1.0;
 
-        // Sell price — base + meal + addon bonuses, then multiplier.
-        let itemPrice = food.basePrice + (setup.mealMode ? GameData.mealBonus : 0);
-        (setup.recipe || []).forEach(ing => {
-            const a = GameData.recipeAddons[ing];
-            if (a?.priceBonus) itemPrice += a.priceBonus;
-        });
-        const sellPrice = itemPrice * mult;
-
         // Cost / profit / break-even via BusinessLogic. Guard in case it's not wired.
         const bl = this.businessLogic;
-        const costPerSale = bl ? bl.calculatePerSaleIngredientCost() : 0;
+        if (!bl) return;
+        // Sell price — exactly what customers pay (base + meal + addons,
+        // times your multiplier, kitchen-staff premium and seating).
+        const sellPrice = bl.calculateSellPrice();
+        const costPerSale = bl.calculatePerSaleIngredientCost();
         const profit = sellPrice - costPerSale;
-        const breakEven = bl ? bl.calculateBreakEvenPrice() : costPerSale;
+        const breakEven = bl.calculateBreakEvenPrice();
 
-        // Sell price + hint.
+        // Sell price + hint. Every 10% above base loses ~8% of buyers.
         this.elements.currentPrice.textContent = `$${sellPrice.toFixed(2)}`;
+        const demandShift = Math.round(-80 * (mult - 1));
         let sellHint;
-        if (mult < 0.85)      sellHint = 'Cheap — buyers flock';
-        else if (mult < 0.95) sellHint = 'Below base — more buyers';
+        if (mult < 0.95)      sellHint = `Below base — about ${demandShift}% more buyers`;
         else if (mult < 1.05) sellHint = 'Base price — balanced';
-        else if (mult < 1.2)  sellHint = 'Above base — some walk away';
-        else                  sellHint = 'Pricey — most buyers balk';
+        else                  sellHint = `Above base — about ${-demandShift}% fewer buyers`;
         if (setup.mealMode) sellHint += ' · meal deal';
         this.elements.priceHint.textContent = sellHint;
 
         // Cost per sale — with a short breakdown.
         if (this.elements.costPerSale) {
             this.elements.costPerSale.textContent = `$${costPerSale.toFixed(2)}`;
-            const ingredientPortion = Math.max(0, costPerSale - 0.4);
+            const packaging = 0.4 * GameData.getDifficultySettings(setup.difficulty).costMultiplier;
+            const ingredientPortion = Math.max(0, costPerSale - packaging);
             this.elements.costHint.textContent =
-                `$${ingredientPortion.toFixed(2)} ingredients + $0.40 packaging`;
+                `$${ingredientPortion.toFixed(2)} ingredients + $${packaging.toFixed(2)} packaging`;
         }
 
         // Profit per sale — green if positive, coral if negative.
@@ -1242,10 +1305,14 @@ class UIManager {
             this.elements.breakEvenPrice.textContent = `$${breakEven.toFixed(2)}`;
             const diff = sellPrice - breakEven;
             let msg;
+            // Highest price the +/- buttons allow (1.5x), for the same menu.
+            const maxPrice = sellPrice / mult * 1.5;
             if (Math.abs(diff) < 0.25) {
                 msg = 'About even — no cushion, no bleed';
             } else if (diff > 0) {
                 msg = `You're $${diff.toFixed(2)} above break-even`;
+            } else if (breakEven > maxPrice) {
+                msg = `Too few customers to cover overhead at any price yet — grow traffic`;
             } else {
                 msg = `Charge $${(-diff).toFixed(2)} more (or cut costs) to break even`;
             }
@@ -1264,14 +1331,17 @@ class UIManager {
         if (businessType === 'restaurant') rent *= 2.5;
         else if (businessType === 'chain') rent *= 4;
 
+        // Salaries scale with training level (same helper the sim charges).
         const employeeMonthly = this.gameState.employees.reduce((sum, e) => {
-            const data = GameData.getEmployeeType(e.type);
-            return sum + (data?.salary || 0);
+            return sum + GameData.getEmployeeSalary(e);
         }, 0);
 
         const marketing = this.gameState.marketing.hasSocialMediaAds
             ? GameData.marketingOptions.socialMediaAds.cost : 0;
 
+        // Every overhead line is charged with the difficulty multiplier
+        // (easy 0.85x, hard 1.2x), so show the amounts actually paid.
+        const costMult = GameData.getDifficultySettings(this.gameState.setup.difficulty).costMultiplier;
         const lines = [
             { label: 'Rent',              value: rent },
             { label: 'Vehicle payment',   value: fixed.vehiclePayment },
@@ -1281,14 +1351,16 @@ class UIManager {
             { label: 'Employees',         value: employeeMonthly },
         ];
         if (marketing > 0) lines.push({ label: 'Social media ads', value: marketing });
+        lines.forEach(l => { l.value = Math.round(l.value * costMult); });
 
         const visible = lines.filter(l => l.value > 0);
         const total = visible.reduce((s, l) => s + l.value, 0);
-        const food = GameData.getFoodTypeData(this.gameState.setup.foodType);
-        const mult = this.gameState.setup.priceMultiplier || 1.0;
-        const meal = this.gameState.setup.mealMode ? GameData.mealBonus : 0;
-        const price = food ? (food.basePrice + meal) * mult : 0;
-        const breakevenSales = price > 0 ? Math.ceil(total / price) : 0;
+
+        // Break-even volume = fixed costs / contribution margin per sale
+        // (price minus the variable cost of making that sale).
+        const bl = this.businessLogic;
+        const margin = bl ? bl.calculateSellPrice() - bl.calculatePerSaleIngredientCost() : 0;
+        const breakevenSales = margin > 0 ? Math.ceil(total / margin) : null;
 
         this.elements.financesGrid.innerHTML = visible.map(l => `
             <div class="finances-row">
@@ -1297,10 +1369,13 @@ class UIManager {
             </div>
         `).join('');
 
+        const breakevenLine = breakevenSales !== null
+            ? `<p>Break-even: <span class="breakeven">${breakevenSales.toLocaleString()} sales/month</span> (~${Math.ceil(breakevenSales / 30)}/day at $${margin.toFixed(2)} profit per sale)</p>`
+            : `<p class="loss">Break-even: never — each sale costs more than it earns. Raise your price or trim the recipe.</p>`;
         this.elements.financesSummary.innerHTML = `
             <p>Total monthly overhead: <span class="total">$${total.toLocaleString()}</span></p>
             <p>That's roughly <span class="total">$${Math.round(total / 30).toLocaleString()}/day</span> before you sell a thing.</p>
-            <p>Break-even: <span class="breakeven">${breakevenSales} sales/month</span> (~${Math.ceil(breakevenSales / 30)}/day)</p>
+            ${breakevenLine}
         `;
     }
 

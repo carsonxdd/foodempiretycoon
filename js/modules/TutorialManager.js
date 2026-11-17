@@ -203,6 +203,7 @@ class TutorialManager {
         this.removeCard();
         this.markDone();
         this.gameState.addMoney(500);
+        this.gameState.logOtherCash('🎓 Tutorial bonus', 500);
         this.uiManager.showNotification('Tutorial complete! +$500', 'success');
     }
 }

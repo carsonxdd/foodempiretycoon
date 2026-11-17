@@ -343,12 +343,14 @@ class SetupManager {
         this.gameState.addEmployee({
             type: 'cook',
             salary: GameData.getEmployeeType('cook').salary,
-            hiredDay: 1
+            hiredDay: 1,
+            starter: true
         });
         this.gameState.addEmployee({
             type: 'cashier',
             salary: GameData.getEmployeeType('cashier').salary,
-            hiredDay: 1
+            hiredDay: 1,
+            starter: true
         });
 
         // Smooth handoff: fade out setup, then fade in the game interface.
@@ -428,6 +430,15 @@ class SetupManager {
                                     : business === 'restaurant' ? 'Restaurant'
                                     : 'Chain';
                 const flavor = typeof GameData !== 'undefined' ? GameData.getResumeFlavor() : '';
+                // Saves from an older release get a short "what changed" list.
+                const notes = typeof GameData !== 'undefined'
+                    ? GameData.getUpdateNotes(saved?.saveVersion, saved?.setup?.foodType) : [];
+                const notesHTML = notes.length ? `
+                    <div class="resume-update">
+                        <div class="resume-update-title">🆕 Updated since your last visit</div>
+                        <ul>${notes.map(n => `<li>${n}</li>`).join('')}</ul>
+                        <div class="resume-update-foot">Your save carries over — nothing you earned was reset.</div>
+                    </div>` : '';
                 snap.innerHTML = `
                     <div class="resume-snapshot">
                         <div class="resume-name">${name}</div>
@@ -438,6 +449,7 @@ class SetupManager {
                         </div>
                         ${flavor ? `<div class="resume-flavor">${flavor}</div>` : ''}
                     </div>
+                    ${notesHTML}
                 `;
             }
         } catch (e) {

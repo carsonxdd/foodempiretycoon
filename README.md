@@ -18,7 +18,7 @@ D:\homework\projects\run\FoodEmpire_Run.bat
 ## How it plays
 
 ### Set up your truck
-1. **Pick your food** — Sandwiches ($7), Pizza slice ($4.50), Tacos ($3.50), or Burgers ($7). Starter prices reflect the bare-bones default recipe.
+1. **Pick your food** — Sandwiches ($7), Pizza slice ($5), Tacos ($5), or Burgers ($7). Starter prices reflect the bare-bones default recipe.
 2. **Name your business**
 3. **Pick a location** — Riverside (tourists), University (students), or Business District (professionals). Different foot traffic, rent, and day-of-week rhythms.
 4. **Pick difficulty** — Easy ($7k start, +30% customers, gentler opening week, supportive bubbles even on losing days), Normal ($5k, the grounded sim), or Hard ($3k + daily market price drift + no fix hints)
@@ -54,7 +54,7 @@ The **Suppliers** tab shows a slider per ingredient (1–50 units). Live unit pr
 Click **Next Day** on the Business tab. A modal pops up with:
 - A one-sentence **narrative** summary of the day
 - **Snapshot tiles** — cash, reputation, regulars, employees, followers
-- **Collapsible numbers** — full revenue/cost breakdown
+- **The day's books** — a small income statement: sales minus each operating cost = operating result, then other cash in/out (supplies bought, hires, upgrades, bonuses, tips), ending in **change in cash** — which always matches how far your Cash moved
 - **Events** — weather, food critics, equipment breakdowns, regulars' birthdays, staff quitting (25 types, 3–5 variants each)
 - **Named customer comments** as chat bubbles — up to 4 voices per day, capped at actual walkup count (a 1-customer day = at most 1 bubble)
 - **💡 Fix hints** under each complaint pointing at the game lever that addresses it (hidden on Hard). Once you pull a lever — buy the Sound System, hire a Cashier, turn on Meal mode — the complaints that pointed there stop appearing too, not just the hint.
@@ -64,7 +64,7 @@ Past days live in a **journal list** on the Business tab. Click any entry to bro
 ### Adjust price (with live economics)
 Business tab's **Menu pricing** card is four live tiles, all recomputed the moment you change a recipe, supplier tier, or price:
 
-- **Sell price** — +/− buttons, clamped 50–150% of base. Cheaper = more buyers, pricier = fewer.
+- **Sell price** — exactly what customers pay, including the kitchen-staff premium and seating. +/− buttons, clamped 50–150% of base. Demand is a real curve: every +10% on price loses about 8% of buyers, so there's a profit-maximizing price rather than "always charge the max."
 - **Cost per sale** — ingredients (consumption × base × tier × market) + $0.40 packaging.
 - **Profit per sale** — sell minus cost, with margin %. Green when you're making money, coral when you're bleeding.
 - **Break-even price** — the minimum you can charge and still cover fixed overhead at today's sales pace. Hint says "$2.60 above break-even" or "charge $0.40 more to break even."
@@ -76,7 +76,7 @@ The **Monthly overhead** card on the Business tab shows every line:
 - Employee salaries
 - Social media ads (if running)
 
-Break-even calc tells you how many sales per month you need to cover fixed costs.
+Amounts include the difficulty's cost multiplier (Easy 0.85×, Hard 1.2×) and trained staff's higher salaries. Break-even = fixed costs ÷ profit per sale (price minus the cost of making it), shown as sales per month and per day.
 
 ## Progression
 
@@ -97,11 +97,13 @@ Days 1–7 are capped at 1–6 walk-ups on Normal and Hard regardless of bonuses
 
 Auto-saves on tab switch and page close. Manual save/load buttons on the Business tab. Everything stored in `localStorage`. **Start Over** wipes the save.
 
+Saves carry across updates: each save has a version, and older saves are upgraded when they load (nothing earned is reset). The Resume dialog lists what changed since the player's last visit.
+
 ## Tech
 
 - Vanilla HTML, CSS, JavaScript — no frameworks, no build
 - Observer pattern on game state drives UI updates
-- Retro look: `Press Start 2P` headings, `VT323` body, subtle CRT scanline overlay over a deep-navy palette
+- Retro look: `Press Start 2P` logo, `Pixelify Sans` headings/buttons, `Space Grotesk` body, subtle CRT scanline overlay over a deep-navy palette
 - Mobile-friendly layout (single column below 1024px) — desktop-first
 - Procedural sound effects via the Web Audio API — no audio asset files, mute toggle persists across sessions
 - `1`–`6` keyboard shortcuts jump straight to a tab; `n` advances the day
@@ -135,6 +137,8 @@ js/ui/SetupManager.js           Setup wizard
 **Now live at [foodempiretycoon.com](https://foodempiretycoon.com)** — self-hosted on a Raspberry Pi, source on [GitHub](https://github.com/carsonxdd/foodempiretycoon).
 
 Feature-complete for the core loop. Recent additions:
+- **Visual refresh, bug sweep + rebalance (0.33.0)** — readable type (Space Grotesk body, Pixelify Sans headings, Press Start 2P logo), slim in-game header, big Next Day button, phone layout fixed (it scrolled sideways). Day reports became an income statement that reconciles to cash. Fixed: phantom $500 bonus for the starting crew on day 1, double payroll on new hires and ads, chains unable to hire, food/location appeal never applied, chef price premium ignored, wrong break-even formula, displayed prices/costs not matching the sim, "Customers yesterday" stuck at 0, toppings' categories flagged "Not in recipe." Rebalanced the runaway reputation loop, gave price a real demand curve, and raised tacos/pizza to $5 so every food is viable (0 bankruptcies across all foods × difficulties × locations in simulation).
+- **In-game feedback is live** — the 💬 button posts to a Cloudflare Worker at `feedback.foodempiretycoon.com` that forwards to Discord (origin allowlist, honeypot, no @mentions, no IPs).
 - **Favicon** — a simple burger-icon SVG (`favicon.svg`) matching the site palette, so the browser tab and bookmarks aren't blank
 - **Smoother recipe toggles** — clicking a core ingredient or topping now animates the summary panel and chip grids to their new height instead of snapping instantly, so the Recipe tab no longer jolts the rest of the page down when its content grows or shrinks.
 - **Rival truck + health inspector** — a named competitor with a momentum stat that drifts based on your prices/reputation, tugs your daily customer count, and shows up as a bar on the storefront panel; plus a rare (2%, day 10+) pre-day health-inspector event with a real branching choice (comply / bribe / dispute). Both feed a new "word on the street" news ticker on the Business tab.
@@ -154,13 +158,14 @@ Feature-complete for the core loop. Recent additions:
 
 See [CLAUDE.md](./CLAUDE.md) for architecture, state shape, and how to extend (add a new food, topping, event, cost line).
 
-Hard-refresh the browser (Ctrl+Shift+R) after code changes to bypass cache.
+Locally, hard-refresh (Ctrl+Shift+R) after code changes. For production, bump the `?v=` on the asset tags in `index.html` with every JS/CSS change — JS/CSS are cached for 7 days, HTML isn't (details in CLAUDE.md → Hosting).
 
 ## Next ideas (if/when you come back)
 
 - Business analytics dashboard — weekly/monthly trends from the journal
 - Custom employee names + relationships (like regulars)
 - Seasonal events (summer slow-down, holiday rushes)
-- Competitor trucks siphoning customers
+- Late-game pacing — restaurant → chain → $1M takes ~1,000 days even with strong play
+- Wire up the flavor-only staff perks (server tips, manager efficiency)
 - Expandable menu: run 2+ food types simultaneously
 - Fractional addon consumption (bacon = 1.5 meats if you want that math)

@@ -11,7 +11,7 @@ class FeedbackManager {
     // Single point of configuration — replace this with the real Worker URL
     // after `wrangler deploy`. Empty string means "feedback disabled" and the
     // submit button will surface a friendly notice instead of silently failing.
-    static FEEDBACK_ENDPOINT = 'https://food-empire-feedback.example.workers.dev';
+    static FEEDBACK_ENDPOINT = 'https://feedback.foodempiretycoon.com';
 
     constructor(gameState, uiManager) {
         this.gameState = gameState;
@@ -104,6 +104,9 @@ class FeedbackManager {
             type: typeRadio?.value || 'other',
             message,
             name: (this.nameField?.value || '').trim() || null,
+            // Honeypot — hidden from people, often filled in by bots. The
+            // Worker silently drops any report where it isn't empty.
+            website: document.getElementById('feedbackWebsite')?.value || '',
             context: this.buildContext(),
         };
 

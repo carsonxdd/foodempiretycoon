@@ -5,6 +5,7 @@ class GameState {
     constructor() {
         this.observers = [];
         this.state = {
+            saveVersion: GameData.SAVE_VERSION,
             money: 10000,
             totalEarnings: 0,
             reputation: 0,
@@ -55,6 +56,10 @@ class GameState {
             },
             regulars: 0,
             history: [],
+            // Cash that moved outside the daily sales/overhead math (achievement
+            // rewards, tutorial bonus, event tips). Flushed into the day report
+            // so the ledger reconciles with the cash balance.
+            cashLog: [],
             newsFeed: [],
             regularCustomers: [],
             healthInspector: { lastVisitDay: null },
@@ -86,6 +91,22 @@ class GameState {
         if (!this.state.history) this.state.history = [];
         this.state.history.push(entry);
         this.notifyObservers('history', this.state.history);
+    }
+
+    // Same label on the same day is merged (three supply orders read as one
+    // "Supplies bought" line instead of three).
+    logOtherCash(label, amount) {
+        if (!amount) return;
+        if (!Array.isArray(this.state.cashLog)) this.state.cashLog = [];
+        const existing = this.state.cashLog.find(c => c.label === label);
+        if (existing) existing.amount = Math.round((existing.amount + amount) * 100) / 100;
+        else this.state.cashLog.push({ label, amount });
+    }
+
+    takeOtherCash() {
+        const log = Array.isArray(this.state.cashLog) ? this.state.cashLog : [];
+        this.state.cashLog = [];
+        return log;
     }
 
     addNewsEntry(entry) {
@@ -158,9 +179,12 @@ class GameState {
         return this.spendMoney(amount);
     }
 
-    spendMoney(amount) {
+    // `label` (optional) records the outflow in the day's cash ledger so the
+    // day report can reconcile to the cash balance (see logOtherCash).
+    spendMoney(amount, label) {
         if (this.state.money >= amount) {
             this.setMoney(this.state.money - amount);
+            if (label) this.logOtherCash(label, -amount);
             return true;
         }
         return false;
@@ -292,11 +316,50 @@ class GameState {
         }
     }
 
+    // Upgrade a save written by an older release so it keeps playing.
+    // Saves before 0.33.0 have no saveVersion (= version 1). Each step only
+    // fills in or translates data; nothing the player earned is taken away.
+    migrate() {
+        const s = this.state;
+        let v = s.saveVersion || 1;
+
+        if (v < 2) {
+            // The starting cook + cashier now carry `starter: true` so they
+            // don't count as the player's first hire. Old saves: the first
+            // day-1 cook and day-1 cashier are the starting crew.
+            const seen = {};
+            (s.employees || []).forEach(e => {
+                if (e.hiredDay === 1 && (e.type === 'cook' || e.type === 'cashier') && !seen[e.type]) {
+                    e.starter = true;
+                    seen[e.type] = true;
+                }
+            });
+            // Tacos/pizza base prices went up; scale the multiplier so the
+            // menu price customers see is exactly what it was before.
+            const oldBase = GameData.legacyBasePrices[2]?.[s.setup?.foodType];
+            const food = GameData.getFoodTypeData(s.setup?.foodType);
+            if (oldBase && food) {
+                const mult = (s.setup.priceMultiplier || 1.0) * oldBase / food.basePrice;
+                s.setup.priceMultiplier = Math.max(0.5, Math.min(1.5, Math.round(mult * 100) / 100));
+            }
+            if (!Array.isArray(s.cashLog)) s.cashLog = [];
+            v = 2;
+        }
+
+        s.saveVersion = v;
+    }
+
     load() {
         try {
             const savedState = localStorage.getItem('foodEmpireGameState');
             if (savedState) {
-                this.state = { ...this.state, ...JSON.parse(savedState) };
+                const parsed = JSON.parse(savedState);
+                this.state = { ...this.state, ...parsed };
+                // Read the version from the raw save, not the merged state —
+                // the defaults carry the *current* SAVE_VERSION, which would
+                // make an old (versionless) save look already migrated.
+                this.state.saveVersion = parsed.saveVersion || 1;
+                this.migrate();
                 // Backfill fields added in later versions so old saves keep working.
                 if (Array.isArray(this.state.employees)) {
                     this.state.employees.forEach(e => {
@@ -319,6 +382,7 @@ class GameState {
 
     reset() {
         this.state = {
+            saveVersion: GameData.SAVE_VERSION,
             money: 10000,
             totalEarnings: 0,
             reputation: 0,
@@ -369,11 +433,19 @@ class GameState {
             },
             regulars: 0,
             history: [],
+            // Cash that moved outside the daily sales/overhead math (achievement
+            // rewards, tutorial bonus, event tips). Flushed into the day report
+            // so the ledger reconciles with the cash balance.
+            cashLog: [],
             newsFeed: [],
             regularCustomers: [],
             healthInspector: { lastVisitDay: null },
             rivalTruck: { name: GameData.getRandomRivalName(), momentum: 50 }
         };
+        // Achievements belong to a single run. Without this, a second game on
+        // the same browser (e.g. a shared lab computer) never gets the bonuses
+        // the first game did, so cash totals don't line up between players.
+        try { localStorage.removeItem('foodEmpireAchievements'); } catch (e) {}
         this.notifyObservers('reset', this.state);
     }
 
