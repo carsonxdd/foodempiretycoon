@@ -95,13 +95,13 @@ Days 1–7 are capped at 1–6 walk-ups on Normal and Hard regardless of bonuses
 
 ## Classroom mode
 
-For teachers using the game in an economics or business class. Open **[foodempiretycoon.com/?classroom](https://foodempiretycoon.com/?classroom)** once on each computer, or click the **🎓 Classroom** button in the game's button row. While it's on:
+For teachers using the game in an economics or business class. Open **[foodempiretycoon.com/?classroom](https://foodempiretycoon.com/?classroom)** once on each computer, or click the **🎓 Classroom** button in the game's button row and confirm. While it's on:
 
 - No achievement rewards, no $500 tutorial bonus, no customer tips. Achievements still unlock as badges.
 - Real costs still apply: surprise expenses, repairs, comps, inspector fines, and everything the player buys.
 - So cash moves only with sales and real costs, which keeps student graphs and hand calculations clean.
 
-It works on existing saves from the next day on (no restart), and is saved per browser. `?classroom=off` turns it off. Bonuses earned before it was turned on stay listed under "Other cash (not from sales)" in those days' reports.
+It works on existing saves from the next day on (no restart), and is saved per browser. It is **one-way**: once on, it can't be turned off in that browser (for any game, including new ones), so students can't switch bonuses back on mid-exercise. The button shows a confirm dialog that says so before it locks in. Bonuses earned before it was turned on stay listed under "Other cash (not from sales)" in those days' reports.
 
 The Business tab shows **Visitors yesterday** (everyone who walked up) and **Customers yesterday** (only those who bought), so a formula like *(customers × profit per sale) − daily overhead* uses the right count.
 
@@ -149,6 +149,7 @@ js/ui/SetupManager.js           Setup wizard
 **Now live at [foodempiretycoon.com](https://foodempiretycoon.com)** — self-hosted on a Raspberry Pi, source on [GitHub](https://github.com/carsonxdd/foodempiretycoon).
 
 Feature-complete for the core loop. Recent additions:
+- **One-way classroom mode (0.34.1)** — turning it on now shows a confirm dialog explaining what changes, and it can't be turned off afterward (`?classroom=off` no longer works).
 - **Classroom mode (0.34.0)** — a `?classroom` link or 🎓 button turns off achievement, tutorial and tip cash for classroom use, on existing saves too. The status card now separates visitors from customers (buyers).
 - **Milestone fix (0.33.1)** — starting a new game now always clears old milestone flags, so a player whose save was wiped by an older version's Restart still earns this run's milestone bonuses.
 - **Visual refresh, bug sweep + rebalance (0.33.0)** — readable type (Space Grotesk body, Pixelify Sans headings, Press Start 2P logo), slim in-game header, big Next Day button, phone layout fixed (it scrolled sideways). Day reports became an income statement that reconciles to cash. Fixed: phantom $500 bonus for the starting crew on day 1, double payroll on new hires and ads, chains unable to hire, food/location appeal never applied, chef price premium ignored, wrong break-even formula, displayed prices/costs not matching the sim, "Customers yesterday" stuck at 0, toppings' categories flagged "Not in recipe." Rebalanced the runaway reputation loop, gave price a real demand curve, and raised tacos/pizza to $5 so every food is viable (0 bankruptcies across all foods × difficulties × locations in simulation).

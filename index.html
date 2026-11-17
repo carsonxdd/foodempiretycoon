@@ -53,7 +53,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="css/styles.css?v=0.34.0">
+    <link rel="stylesheet" href="css/styles.css?v=0.34.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&family=Press+Start+2P&family=Space+Grotesk:wght@400..700&display=swap" rel="stylesheet">
@@ -582,6 +582,31 @@
             </div>
         </div>
 
+        <!-- Classroom mode opt-in — one-way, so it spells out what changes first -->
+        <div class="health-inspector-modal classroom-modal hidden" id="classroomModal" aria-hidden="true">
+            <div class="day-modal-backdrop" data-classroom-cancel></div>
+            <div class="day-modal-card" role="dialog" aria-modal="true" aria-labelledby="classroomModalTitle">
+                <div class="day-modal-header">
+                    <div class="day-modal-title" id="classroomModalTitle">🎓 Turn on Classroom Mode?</div>
+                </div>
+                <div class="day-modal-body">
+                    <p>Classroom Mode makes your cash come only from running the business, so your daily numbers show real sales and real costs.</p>
+                    <p class="classroom-list-head">Starting with your next day:</p>
+                    <ul class="classroom-list">
+                        <li><strong>No achievement cash.</strong> You still earn the badges, but they pay $0.</li>
+                        <li><strong>No tutorial bonus</strong> and <strong>no customer tips.</strong></li>
+                        <li><strong>All costs still apply:</strong> rent, salaries, supplies, repairs, inspections.</li>
+                        <li>Bonuses you already earned stay in your old daily reports.</li>
+                    </ul>
+                    <p class="classroom-warn">⚠️ <strong>You can't turn it off.</strong> Once it's on, Classroom Mode stays on for every game in this browser, including new games.</p>
+                    <div class="resume-actions">
+                        <button class="arcade-button primary" id="classroomConfirm">Turn on for good</button>
+                        <button class="arcade-button" id="classroomCancel" data-classroom-cancel>Not now</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Health inspector event — blocks day-advance until a choice is made, no backdrop dismiss -->
         <div class="health-inspector-modal hidden" id="healthInspectorModal" aria-hidden="true">
             <div class="day-modal-backdrop"></div>
@@ -596,15 +621,15 @@
         </div>
     </div>
     <!-- Game Modules -->
-    <script src="js/modules/GameData.js?v=0.34.0"></script>
-    <script src="js/modules/GameState.js?v=0.34.0"></script>
-    <script src="js/modules/TutorialManager.js?v=0.34.0"></script>
-    <script src="js/modules/SoundManager.js?v=0.34.0"></script>
-    <script src="js/game/BusinessLogic.js?v=0.34.0"></script>
-    <script src="js/ui/UIManager.js?v=0.34.0"></script>
-    <script src="js/ui/SetupManager.js?v=0.34.0"></script>
-    <script src="js/ui/FeedbackManager.js?v=0.34.0"></script>
-    <script src="js/game/GameController.js?v=0.34.0"></script>
-    <script src="js/main.js?v=0.34.0"></script>
+    <script src="js/modules/GameData.js?v=0.34.1"></script>
+    <script src="js/modules/GameState.js?v=0.34.1"></script>
+    <script src="js/modules/TutorialManager.js?v=0.34.1"></script>
+    <script src="js/modules/SoundManager.js?v=0.34.1"></script>
+    <script src="js/game/BusinessLogic.js?v=0.34.1"></script>
+    <script src="js/ui/UIManager.js?v=0.34.1"></script>
+    <script src="js/ui/SetupManager.js?v=0.34.1"></script>
+    <script src="js/ui/FeedbackManager.js?v=0.34.1"></script>
+    <script src="js/game/GameController.js?v=0.34.1"></script>
+    <script src="js/main.js?v=0.34.1"></script>
 </body>
 </html>

@@ -1123,6 +1123,8 @@ class GameData {
     // (achievement rewards, tutorial bonus, customer tips). Real costs still
     // apply. Global flag so it covers existing saves and new games alike;
     // turned on by a ?classroom link or the in-game classroom button.
+    // One-way: once on it stays on in this browser, so students can't flip
+    // bonuses back on mid-exercise and muddy their daily numbers.
     static CLASSROOM_KEY = 'foodEmpireClassroomMode';
 
     static isClassroomMode() {
@@ -1130,9 +1132,9 @@ class GameData {
         catch (e) { return false; }
     }
 
-    static setClassroomMode(on) {
+    static enableClassroomMode() {
         try {
-            localStorage.setItem(this.CLASSROOM_KEY, on ? '1' : '0');
+            localStorage.setItem(this.CLASSROOM_KEY, '1');
         } catch (e) { /* storage blocked - mode just won't persist */ }
     }
 

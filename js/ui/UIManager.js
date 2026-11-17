@@ -270,6 +270,29 @@ class UIManager {
         modal.setAttribute('aria-hidden', 'false');
     }
 
+    // Confirm dialog for the one-way classroom switch. onConfirm fires only
+    // on "Turn on for good"; backdrop, "Not now" and Escape all cancel.
+    showClassroomConfirm(onConfirm) {
+        const modal = document.getElementById('classroomModal');
+        if (!modal) return;
+        const close = () => {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            modal.removeEventListener('click', onClick);
+            document.removeEventListener('keydown', onKey);
+        };
+        const onClick = (e) => {
+            if (e.target.closest('#classroomConfirm')) { close(); onConfirm(); }
+            else if (e.target.closest('[data-classroom-cancel]')) close();
+        };
+        const onKey = (e) => { if (e.key === 'Escape') close(); };
+        modal.addEventListener('click', onClick);
+        document.addEventListener('keydown', onKey);
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+        document.getElementById('classroomCancel')?.focus();
+    }
+
     hideHealthInspectorModal() {
         const modal = document.getElementById('healthInspectorModal');
         if (modal) {

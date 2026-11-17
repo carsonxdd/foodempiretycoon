@@ -145,12 +145,16 @@ class GameController {
         if (classroomButton) {
             this.updateClassroomButton(classroomButton);
             classroomButton.addEventListener('click', () => {
-                const on = !GameData.isClassroomMode();
-                GameData.setClassroomMode(on);
-                this.updateClassroomButton(classroomButton);
-                this.uiManager.showNotification(on
-                    ? 'Classroom mode on: no achievement, tutorial or tip bonuses from now on.'
-                    : 'Classroom mode off: achievement bonuses are back.', 'info');
+                if (GameData.isClassroomMode()) {
+                    this.uiManager.showNotification("Classroom mode is locked on in this browser. It can't be turned off.", 'info');
+                    return;
+                }
+                // One-way switch: explain what changes before locking it in.
+                this.uiManager.showClassroomConfirm(() => {
+                    GameData.enableClassroomMode();
+                    this.updateClassroomButton(classroomButton);
+                    this.uiManager.showNotification('Classroom mode on: no achievement, tutorial or tip bonuses from now on.', 'success');
+                });
             });
         }
 
@@ -160,12 +164,12 @@ class GameController {
 
     updateClassroomButton(button) {
         const on = GameData.isClassroomMode();
-        button.textContent = on ? '🎓 Classroom: On' : '🎓 Classroom: Off';
+        button.textContent = on ? '🎓 Classroom: On 🔒' : '🎓 Classroom: Off';
         button.classList.toggle('is-on', on);
         button.setAttribute('aria-pressed', on ? 'true' : 'false');
         button.title = on
-            ? 'Classroom mode: cash comes only from sales - no achievement, tutorial or tip bonuses. Click to turn off.'
-            : 'Turn on classroom mode: no achievement, tutorial or tip bonuses, so cash reflects only sales.';
+            ? 'Classroom mode is on and locked: cash comes only from sales - no achievement, tutorial or tip bonuses.'
+            : "Turn on classroom mode: no achievement, tutorial or tip bonuses, so cash reflects only sales. Once on, it can't be turned off.";
     }
 
     updateSoundButton(button) {
@@ -757,6 +761,9 @@ class GameController {
         if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
             return;
         }
+        // No shortcuts behind the classroom confirm dialog.
+        const classroomModal = document.getElementById('classroomModal');
+        if (classroomModal && !classroomModal.classList.contains('hidden')) return;
 
         const tabKeys = { '1': 'business', '2': 'recipe', '3': 'suppliers', '4': 'employees', '5': 'marketing', '6': 'upgrades' };
         const gameInterface = document.getElementById('gameInterface');

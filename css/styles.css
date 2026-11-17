@@ -2442,6 +2442,22 @@ select:focus {
 
 .health-inspector-modal.hidden { display: none; }
 
+.classroom-modal .day-modal-body p { margin-bottom: var(--s-sm); }
+.classroom-list-head { color: var(--amber); font-family: var(--f-pixel); }
+.classroom-list {
+    margin: 0 0 var(--s-md) var(--s-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-xs);
+}
+.classroom-warn {
+    padding: var(--s-sm) var(--s-md);
+    border: 1px solid var(--coral);
+    border-radius: var(--r-sm);
+    background: color-mix(in srgb, var(--coral) 12%, transparent);
+}
+.classroom-modal .resume-actions { margin-top: var(--s-md); }
+
 .hi-choices {
     display: flex;
     flex-direction: column;
